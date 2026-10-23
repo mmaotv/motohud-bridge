@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 爱车页：上半屏车型大图 + 关键数据 + 功能宫格 + 车辆参数 -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:paddingBottom="28dp"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp">
+
+        <!-- ================= Hero：车型大图 ================= -->
+        <FrameLayout
+            android:id="@+id/hero"
+            android:layout_width="match_parent"
+            android:layout_height="272dp"
+            android:background="@drawable/bg_hero_frame"
+            android:clipToOutline="true">
+
+            <ImageView
+                android:id="@+id/iv_bike"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/garage_bike_photo"
+                android:paddingTop="6dp"
+                android:paddingBottom="34dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_nav_garage" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/glow_hero" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/scrim_hero_bottom" />
+
+            <!-- 连接状态胶囊 -->
+            <LinearLayout
+                android:id="@+id/status_pill"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="14dp"
+                android:layout_marginEnd="14dp"
+                android:background="@drawable/bg_status_pill"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
+
+                <View
+                    android:id="@+id/status_dot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/dot_gray" />
+
+                <TextView
+                    android:id="@+id/tv_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:fontFamily="@font/inter"
+                    android:text="@string/status_disconnected"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- 品牌 / 车型 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tv_brand"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter"
+                    android:letterSpacing="0.18"
+                    android:text="@string/garage_brand_placeholder"
+                    android:textColor="@color/accent"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_model"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/inter"
+                    android:text="@string/garage_model_placeholder"
+                    android:textColor="@color/text_primary"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/inter"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- 换车 -->
+            <TextView
+                android:id="@+id/btn_change_bike"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="14dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_status_pill"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/garage_change"
+                android:textColor="@color/text_primary"
+                android:textSize="11sp" />
+        </FrameLayout>
+
+        <!-- ================= 关键数据 ================= -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tv_oil"
+                    style="@style/Garage.Metric.Value"
+                    android:text="@string/garage_value_empty" />
+
+                <TextView
+                    style="@style/Garage.Metric.Label"
+                    android:text="@string/garage_metric_oil" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tv_battery"
+                    style="@style/Garage.Metric.Value"
+                    android:text="@string/garage_value_empty" />
+
+                <TextView
+                    style="@style/Garage.Metric.Label"
+                    android:text="@string/garage_metric_battery" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tv_water"
+                    style="@style/Garage.Metric.Value"
+                    android:text="@string/garage_value_empty" />
+
+                <TextView
+                    style="@style/Garage.Metric.Label"
+                    android:text="@string/garage_metric_water" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tv_mileage"
+                    style="@style/Garage.Metric.Value"
+                    android:text="@string/garage_value_empty" />
+
+                <TextView
+                    style="@style/Garage.Metric.Label"
+                    android:text="@string/garage_metric_mileage" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 未连接提示条 -->
+        <LinearLayout
+            android:id="@+id/connect_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_metric"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="10dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="@string/status_disconnected"
+                android:src="@drawable/ic_bluetooth"
+                app:tint="@color/accent" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/garage_connect_hint"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/btn_connect"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="@string/empty_action"
+                android:textColor="@color/accent"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ================= 功能宫格 ================= -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/garage_section_tools"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/tile_dashboard"
+                style="@style/Garage.Tile">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_dashboard"
+                    android:src="@drawable/ic_nav_dashboard"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_dashboard" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tile_examination"
+                style="@style/Garage.Tile"
+                android:layout_marginStart="8dp">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_examination"
+                    android:src="@drawable/ic_nav_examination"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_examination" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tile_command"
+                style="@style/Garage.Tile"
+                android:layout_marginStart="8dp">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_command"
+                    android:src="@drawable/ic_nav_command"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_command" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/tile_navigation"
+                style="@style/Garage.Tile">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_navigation"
+                    android:src="@drawable/ic_nav_navigation"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_navigation" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tile_search"
+                style="@style/Garage.Tile"
+                android:layout_marginStart="8dp">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_search"
+                    android:src="@drawable/ic_nav_search"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_search" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tile_connect"
+                style="@style/Garage.Tile"
+                android:layout_marginStart="8dp">
+
+                <ImageView
+                    style="@style/Garage.Tile.Icon"
+                    android:contentDescription="@string/nav_scan"
+                    android:src="@drawable/ic_nav_scan"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    style="@style/Garage.Tile.Label"
+                    android:text="@string/nav_scan" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ================= 车辆参数 ================= -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/garage_section_specs"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/garage_specs_note"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- 亮点标签 -->
+            <LinearLayout
+                android:id="@+id/highlight_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal" />
+
+            <LinearLayout
+                android:id="@+id/spec_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/garage_disclaimer"
+            android:textColor="@color/text_tertiary"
+            android:textSize="10sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

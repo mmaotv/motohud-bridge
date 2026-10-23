@@ -19,4 +19,6 @@ local.properties
 # 高德 SDK 由 tools/prepare_amap_sdk.py 下载生成，不随仓库分发
 /app/libs/*.jar
 /app/src/main/jniLibs/
-/app/src/main/assets/
+/app/src/main/assets/*
+# 但车型插画要进仓库（可自行替换同名文件）
+!/app/src/main/assets/bikes/

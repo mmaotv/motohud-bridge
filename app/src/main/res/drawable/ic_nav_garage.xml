@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 摩托车（爱车页签）：双轮 + 车架 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+
+    <!-- 后轮 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.6,15.4m-3.4,0a3.4,3.4 0,1 0,6.8 0a3.4,3.4 0,1 0,-6.8 0M5.6,15.4m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <!-- 前轮 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M18.4,15.4m-3.4,0a3.4,3.4 0,1 0,6.8 0a3.4,3.4 0,1 0,-6.8 0M18.4,15.4m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <!-- 车架 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.6,15.4L9.4,9.6h5.4l3.6,5.8h-1.5l-2.9,-4.6h-3.5l-3.1,4.6z" />
+    <!-- 车把与座椅 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M14.2,9.6l1.5,-2.6h3.1v1.3h-2.3l-1.1,1.9zM8.9,9.6l-1.3,-1.7H5.3V6.6h3l1.6,2z" />
+</vector>

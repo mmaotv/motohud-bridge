@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_scan"
-        android:icon="@drawable/ic_nav_scan"
-        android:title="@string/nav_scan" />
+        android:id="@+id/nav_garage"
+        android:icon="@drawable/ic_nav_garage"
+        android:title="@string/nav_garage" />
     <item
         android:id="@+id/nav_dashboard"
         android:icon="@drawable/ic_nav_dashboard"
         android:title="@string/nav_dashboard" />
     <item
-        android:id="@+id/nav_navigation"
-        android:icon="@drawable/ic_nav_navigation"
-        android:title="@string/nav_navigation" />
-    <item
         android:id="@+id/nav_examination"
         android:icon="@drawable/ic_nav_examination"
         android:title="@string/nav_examination" />
+    <item
+        android:id="@+id/nav_navigation"
+        android:icon="@drawable/ic_nav_navigation"
+        android:title="@string/nav_navigation" />
     <item
         android:id="@+id/nav_command"
         android:icon="@drawable/ic_nav_command"
         android:title="@string/nav_command" />
     <item
-        android:id="@+id/nav_search"
-        android:icon="@drawable/ic_nav_search"
-        android:title="@string/nav_search" />
+        android:id="@+id/nav_scan"
+        android:icon="@drawable/ic_nav_scan"
+        android:title="@string/nav_scan" />
 </menu>

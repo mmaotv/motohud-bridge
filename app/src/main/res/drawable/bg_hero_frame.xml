@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 车型大图容器：深色渐变底 + 24dp 圆角（clipToOutline 生效） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#FF2A2A2E"
+        android:centerColor="#FF161618"
+        android:endColor="#FF08080A"
+        android:type="linear" />
+    <corners android:radius="24dp" />
+</shape>

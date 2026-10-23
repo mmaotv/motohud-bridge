@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 车型图上方的场景光晕（暖色，模拟棚拍灯光），叠加在图片之上 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:centerX="0.72"
+        android:centerY="0.18"
+        android:gradientRadius="72%p"
+        android:startColor="#33FF9F0A"
+        android:centerColor="#12FF9F0A"
+        android:endColor="#00000000"
+        android:type="radial" />
+</shape>

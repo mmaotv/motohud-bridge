@@ -87,25 +87,25 @@ class MainActivity : AppCompatActivity() {
         bottomNav = findViewById(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
             pager.currentItem = when (item.itemId) {
-                R.id.nav_scan -> TAB_SCAN
+                R.id.nav_garage -> TAB_GARAGE
                 R.id.nav_dashboard -> TAB_DASHBOARD
                 R.id.nav_navigation -> TAB_NAVIGATION
                 R.id.nav_examination -> TAB_EXAMINATION
                 R.id.nav_command -> TAB_COMMAND
-                R.id.nav_search -> TAB_SEARCH
-                else -> TAB_SCAN
+                R.id.nav_scan -> TAB_SCAN
+                else -> TAB_GARAGE
             }
             true
         }
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 bottomNav.selectedItemId = when (position) {
-                    TAB_SCAN -> R.id.nav_scan
+                    TAB_GARAGE -> R.id.nav_garage
                     TAB_DASHBOARD -> R.id.nav_dashboard
                     TAB_NAVIGATION -> R.id.nav_navigation
                     TAB_EXAMINATION -> R.id.nav_examination
                     TAB_COMMAND -> R.id.nav_command
-                    else -> R.id.nav_search
+                    else -> R.id.nav_scan
                 }
             }
         })
@@ -278,11 +278,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val TAB_SCAN = 0
+        const val TAB_GARAGE = 0
         const val TAB_DASHBOARD = 1
-        const val TAB_NAVIGATION = 2
-        const val TAB_EXAMINATION = 3
+        const val TAB_EXAMINATION = 2
+        const val TAB_NAVIGATION = 3
         const val TAB_COMMAND = 4
-        const val TAB_SEARCH = 5
+        const val TAB_SCAN = 5
     }
 }

@@ -4,6 +4,7 @@
 
     <!-- 底部导航 -->
     <string name="nav_scan">连接</string>
+    <string name="nav_garage">爱车</string>
     <string name="nav_dashboard">仪表</string>
     <string name="nav_navigation">导航</string>
     <string name="nav_examination">体检</string>
@@ -88,6 +89,7 @@
     <string name="gps_notify_msg">扫描蓝牙设备需要打开定位服务（GPS），是否前往设置？</string>
     <string name="save">保存</string>
     <string name="delete">删除</string>
+    <string name="clear">清除</string>
     <string name="edit">编辑</string>
     <string name="start_navi">开始导航</string>
 
@@ -228,4 +230,35 @@
     <string name="settings_notify">通知转发设置</string>
     <string name="settings_about">关于</string>
     <string name="settings_version">版本</string>
+
+    <!-- 爱车页 -->
+    <string name="garage_bike_photo">车型图片</string>
+    <string name="garage_brand_placeholder">APRILIA</string>
+    <string name="garage_model_placeholder">SR Max 300</string>
+    <string name="garage_change">换车</string>
+    <string name="garage_value_empty">--</string>
+    <string name="garage_metric_oil">油量</string>
+    <string name="garage_metric_battery">电压</string>
+    <string name="garage_metric_water">水温</string>
+    <string name="garage_metric_mileage">总里程</string>
+    <string name="garage_connect_hint">未连接车机 · 当前显示车型资料，连接后可查看实时数据</string>
+    <string name="garage_section_tools">功能</string>
+    <string name="garage_section_specs">车辆参数</string>
+    <string name="garage_specs_note">仅供参考</string>
+    <string name="garage_status_connected">已连接</string>
+    <string name="garage_status_connecting">连接中</string>
+    <string name="garage_picker_title">选择车型</string>
+    <string name="garage_picker_all">全部</string>
+    <string name="garage_auto_matched">已根据车机自动匹配车型：%1$s，可在「爱车 → 换车」中修改</string>
+    <string name="garage_disclaimer">车型参数与图片为公开资料与原创插画整理，可能因年款、地区版本存在差异，仅供参考；本应用与所列整车厂商无从属关系。</string>
+    <string name="garage_search_title">本地检索</string>
+
+    <!-- 高德 Key 申请辅助 -->
+    <string name="amap_pkg_label">包名</string>
+    <string name="amap_sha1_label">签名 SHA1</string>
+    <string name="amap_copy_info">复制包名与 SHA1</string>
+    <string name="amap_open_console">去高德开放平台申请</string>
+    <string name="amap_info_copied">已复制，粘贴到高德控制台的「包名」与「SHA1」输入框即可</string>
+    <string name="amap_sha1_unavailable">读取失败</string>
+    <string name="amap_apply_tip">高德 Key 与「包名 + 签名 SHA1」绑定，必须用自己的签名重新申请（免费）。把下面两项填进控制台，拿到 Key 后粘贴到下方。</string>
 </resources>

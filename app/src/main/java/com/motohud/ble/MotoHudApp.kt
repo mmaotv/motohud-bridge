@@ -6,6 +6,7 @@ import com.motohud.ble.ble.BleConnectionManager
 import com.motohud.ble.data.AppDatabase
 import com.motohud.ble.data.FaultRepository
 import com.motohud.ble.data.SearchEngine
+import com.motohud.ble.data.bike.BikePrefs
 import com.motohud.ble.navi.NaviForwarder
 import com.motohud.ble.navi.RouteNaviEngine
 
@@ -27,6 +28,8 @@ class MotoHudApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 恢复上次选择的车型
+        BikePrefs.init(this)
         // 已同意隐私政策时预热高德 SDK（未同意则等引导页授权后再初始化）
         if (AmapManager.isPrivacyAgreed(this) && AmapManager.hasKey(this)) {
             AmapManager.initMap(this)
