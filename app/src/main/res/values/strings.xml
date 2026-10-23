@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">机车车机助手</string>
+
+    <!-- 底部导航 -->
+    <string name="nav_scan">连接</string>
+    <string name="nav_dashboard">仪表</string>
+    <string name="nav_navigation">导航</string>
+    <string name="nav_examination">体检</string>
+    <string name="nav_command">指令</string>
+    <string name="nav_search">搜索</string>
+
+    <!-- 连接页（复刻原车机 App 行为） -->
+    <string name="status_disconnected">未连接</string>
+    <string name="status_connecting">正在连接…</string>
+    <string name="status_connected">已连接</string>
+    <string name="status_reconnecting">掉线重连中…</string>
+    <string name="btn_scan">扫描设备</string>
+    <string name="btn_disconnect">断开连接</string>
+    <string name="scan_hint">仅显示名称以 BYQ / SR 开头的目标设备（与原厂车机过滤规则一致）</string>
+    <string name="scan_empty">未发现设备，请确认设备已开机且在附近</string>
+    <string name="perm_denied">缺少蓝牙/定位权限，无法扫描</string>
+
+    <!-- 仪表页 -->
+    <string name="dashboard_title">实时数据</string>
+    <string name="dashboard_tip">数据来自车机 BLE 上报（CMD_B / CMD_C / CMD_D）。未连接时显示占位符。</string>
+    <string name="label_speed">速度</string>
+    <string name="label_rpm">转速</string>
+    <string name="label_fuel">瞬时油耗</string>
+    <string name="label_water_temp">水温</string>
+    <string name="label_room_temp">环境温度</string>
+    <string name="label_oil">油量</string>
+    <string name="label_battery">电瓶电压</string>
+    <string name="label_mileage">总里程</string>
+    <string name="label_max_speed">最大速度</string>
+    <string name="label_avg_speed">平均速度</string>
+    <string name="unit_speed">%1$d km/h</string>
+    <string name="unit_rpm">%1$d rpm</string>
+    <string name="unit_fuel">%1$s km/L</string>
+    <string name="unit_temp">%1$d ℃</string>
+    <string name="unit_percent">%1$d %%</string>
+    <string name="unit_battery">%1$s V</string>
+    <string name="water_temp_low">&lt;45 ℃</string>
+
+    <!-- 体检页 -->
+    <string name="exam_title">车辆体检</string>
+    <string name="exam_no_data">等待设备数据（开关状态由 CMD_A 上报）…</string>
+    <string name="exam_fault_title">故障码</string>
+    <string name="exam_no_fault">无故障码</string>
+
+    <!-- 指令页 -->
+    <string name="command_title">指令控制台</string>
+    <string name="command_device_unknown">当前设备：未连接或类型未知</string>
+    <string name="command_navi_title">导航指令（按设备类型自动选码表）</string>
+    <string name="command_icon">转向图标类型（高德 0~19）</string>
+    <string name="command_path_remain">全程剩余距离</string>
+    <string name="command_step_remain">下一路段剩余距离</string>
+    <string name="command_hello">握手</string>
+    <string name="command_navi">发送导航</string>
+    <string name="command_finish">到达终点</string>
+    <string name="command_custom_title">自定义文本指令</string>
+    <string name="command_custom_hint">如 HELLO :A:Xiaomi:</string>
+    <string name="command_send">发送</string>
+    <string name="command_msg_test">测试通知推送</string>
+    <string name="command_empty">指令不能为空</string>
+
+    <!-- 搜索页 -->
+    <string name="search_title">本地搜索</string>
+    <string name="search_hint">输入故障码 / 指令 / 关键词</string>
+    <string name="search_history">搜索历史</string>
+    <string name="search_clear_history">清空</string>
+    <string name="search_empty">无匹配结果</string>
+
+    <!-- 通用空态 -->
+    <string name="empty_title">未连接车机</string>
+    <string name="empty_message">连接车机后即可查看实时数据。请前往"连接"页扫描 BYQ / SR 设备。</string>
+    <string name="empty_action">去连接</string>
+    <string name="empty_message_dashboard">连接车机后即可查看速度、转速、水温、油量等实时数据。请前往"连接"页扫描 BYQ / SR 设备。</string>
+    <string name="empty_message_exam">连接车机后才能进行车辆体检、读取开关状态与故障码。</string>
+    <string name="empty_message_command">连接车机后才能发送导航指令与自定义文本指令。</string>
+    <string name="empty_message_scan">正在扫描附近的 BYQ / SR 设备…</string>
+
+    <!-- 通知权限引导 -->
+    <string name="notify_title">通知转发</string>
+    <string name="notify_message">需要授予通知访问权限，才能将手机通知与来电转发到头盔设备。是否前往设置？</string>
+    <string name="cancel">取消</string>
+    <string name="setting">去设置</string>
+    <string name="gps_notify_msg">扫描蓝牙设备需要打开定位服务（GPS），是否前往设置？</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="start_navi">开始导航</string>
+
+    <!-- 导航页 -->
+    <string name="navi_title">投屏导航</string>
+    <string name="navi_location_unknown">当前位置：未获取（点击刷新定位）</string>
+    <string name="navi_refresh_location">刷新定位</string>
+    <string name="navi_saved_places">常用地址</string>
+    <string name="navi_add_place">添加</string>
+    <string name="navi_manage_places">管理地址</string>
+    <string name="navi_places_empty">还没有常用地址。点击"管理地址"添加家庭、公司等常用地址，之后在地图上方点击地址即可一键开始导航。</string>
+    <string name="navi_manual_dest">输入坐标</string>
+    <string name="navi_btn_map">选择地图</string>
+    <string name="navi_tip">提示：投屏导航将导航信息（转向图标 + 剩余距离）通过蓝牙实时发送给车机；未连接车机时也可运行，用于演示与调试。</string>
+    <string name="navi_need_location">请先获取当前位置（点击刷新定位）</string>
+    <string name="navi_map_choice_hint">已用当前位置作为目的地，可在对话框中选择地图；输入精确目的地请用"输入坐标"。</string>
+    <string name="navi_search_hint">搜索目的地（如：加油站、商场）</string>
+    <string name="navi_cast">投屏</string>
+    <string name="navi_ble_hint">未连接车机：导航信息仅在本机显示，连接车机后将自动转发到车机屏幕。</string>
+    <string name="navi_tips_searching">正在搜索…</string>
+    <string name="navi_tips_empty">未找到相关地点，请换个关键词试试</string>
+    <string name="navi_tips_error">搜索失败，请检查高德 Key 配置与网络</string>
+    <string name="navi_tips_error_code">搜索失败（错误码 %1$d）：请确认 Key 已绑定包名 com.motohud.ble，并已开通「搜索」服务</string>
+    <string name="navi_starting">正在规划路线…</string>
+
+    <!-- 高德 Key 配置 -->
+    <string name="amap_key_title">高德地图 Key</string>
+    <string name="amap_key_hint_navi">配置高德地图 Key 后，即可使用地图展示、目的地搜索与路线导航。未配置时仅可使用蓝牙投屏演示导航。</string>
+    <string name="amap_key_hint_settings">在高德开放平台（lbs.amap.com）申请 Android Key，绑定包名 com.motohud.ble 与当前签名，粘贴到下方即可启用地图功能。</string>
+    <string name="amap_key_setup">去配置</string>
+    <string name="amap_key_input_hint">粘贴高德 API Key</string>
+    <string name="amap_key_current">当前 Key：%1$s</string>
+    <string name="amap_key_from_build">当前 Key 来自构建配置（local.properties）</string>
+    <string name="amap_key_none">尚未配置</string>
+    <string name="amap_key_applied">Key 已保存，地图功能已启用</string>
+    <string name="amap_key_cleared">已清除应用内 Key</string>
+    <string name="amap_key_invalid">Key 不能为空</string>
+    <string name="amap_key_restart_note">Key 已切换，如地图异常请重启应用</string>
+
+    <!-- 地址编辑 -->
+    <string name="place_add_title">添加常用地址</string>
+    <string name="place_edit_title">编辑常用地址</string>
+    <string name="place_name">名称（如：家、公司）</string>
+    <string name="place_type">类型</string>
+    <string name="place_lat">纬度（GCJ02，如 39.9087）</string>
+    <string name="place_lng">经度（GCJ02，如 116.3975）</string>
+    <string name="place_remark">备注（可选）</string>
+    <string name="place_input_invalid">请检查输入：名称非空，纬度 -90~90，经度 -180~180</string>
+    <string name="place_added">地址已添加</string>
+    <string name="place_updated">地址已更新</string>
+    <string name="place_deleted">地址已删除</string>
+    <string name="place_delete_title">删除地址</string>
+    <string name="place_delete_message">确定删除"%1$s"吗？</string>
+
+    <!-- 手动目的地 -->
+    <string name="manual_dest_title">输入目的地</string>
+    <string name="dest_name">目的地名称</string>
+
+    <!-- 地图选择（复刻原车机 App 的地图选择逻辑） -->
+    <string name="map_choice_title">选择导航方式</string>
+    <string name="map_amap">高德地图</string>
+    <string name="map_baidu">百度地图</string>
+    <string name="map_tencent">腾讯地图</string>
+    <string name="map_ble_navi">蓝牙投屏导航</string>
+    <string name="map_system">系统地图</string>
+
+    <!-- HUD -->
+    <string name="hud_dest">目的地</string>
+    <string name="hud_turn_icon">转向图标</string>
+    <string name="hud_step_remain_label">下一转弯</string>
+    <string name="hud_path_remain_label">全程剩余</string>
+    <string name="hud_eta_label">预计用时</string>
+    <string name="hud_speed_label">当前速度</string>
+    <string name="hud_traveled_label">已行驶</string>
+    <string name="hud_gps_label">定位模式</string>
+    <string name="hud_arrived">已到达目的地</string>
+    <string name="hud_demo_straight">直行</string>
+    <string name="hud_demo_left">左转</string>
+    <string name="hud_demo_right">右转</string>
+    <string name="hud_demo_left_front">左前</string>
+    <string name="hud_demo_right_front">右前</string>
+    <string name="hud_demo_uturn">掉头</string>
+    <string name="hud_demo_arrive">到达</string>
+    <string name="hud_speed_down">速度 -10</string>
+    <string name="hud_speed_up">速度 +10</string>
+    <string name="hud_stop">停止导航</string>
+    <string name="hud_navi_stopped">导航已停止</string>
+
+    <!-- 专业导航页 -->
+    <string name="guidance_title">导航</string>
+    <string name="guidance_planning">正在规划路线…</string>
+    <string name="guidance_plan_failed">路线规划失败：%1$s</string>
+    <string name="guidance_eta">预计到达</string>
+    <string name="guidance_remain">剩余距离</string>
+    <string name="guidance_speed">当前速度</string>
+    <string name="guidance_gps">定位</string>
+    <string name="guidance_simulated">推算</string>
+    <string name="guidance_stop">停止导航</string>
+    <string name="guidance_finish">完成</string>
+    <string name="guidance_ble_hint">未连接车机：导航指令暂不发送，连接后自动转发。</string>
+    <string name="guidance_no_location">尚未获取到定位，正在使用默认起点演示；授权定位后将使用真实位置。</string>
+    <string name="guidance_need_key">需要先配置高德地图 Key 才能使用路线导航。</string>
+    <string name="guidance_demo_mode">未配置高德 Key，已进入演示模式（直线推算）。</string>
+    <string name="guidance_demo_short">演示模式（直线推算）</string>
+    <string name="guidance_exit_title">退出导航？</string>
+    <string name="guidance_exit_message">退出后将停止向车机发送导航信息。</string>
+
+    <!-- 新手引导 -->
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_agree">同意并继续</string>
+    <string name="onboarding_start">开始使用</string>
+    <string name="onboarding_skip">跳过引导</string>
+    <string name="onboarding_welcome_sub">连接车机 · 实时仪表 · 投屏导航\n为摩托车骑行打造</string>
+    <string name="onboarding_privacy_title">隐私政策说明</string>
+    <string name="onboarding_privacy_body">欢迎使用机车车机助手。本应用为自用的摩托车车机互联工具，请在使用前阅读并同意以下条款：\n\n1. 本应用通过蓝牙 BLE 与车机通信，用于读取车辆数据（速度、转速、水温、油量、故障码等）并向车机投屏导航信息；通信仅在本地进行，不上传任何车辆数据。\n\n2. 地图、地点搜索与定位功能由高德开放平台 SDK 提供。使用这些功能时，应用会将您输入的目的地关键词与当前位置发送给高德服务器用于检索与路线规划。\n\n3. 通知转发功能（可选）仅在您手动授权后读取手机通知与来电状态，用于推送到头盔设备，通知内容不经过任何第三方服务器。\n\n4. 应用不收集、不存储任何个人身份信息，不包含账号体系；常用地址与搜索历史仅保存在本机。</string>
+    <string name="onboarding_privacy_note">点击"同意并继续"表示您已阅读并同意上述条款。若不同意，地图与定位相关功能将无法使用。</string>
+    <string name="onboarding_connect_title">如何连接车机</string>
+    <string name="onboarding_connect_step1_title">车机开机</string>
+    <string name="onboarding_connect_step1_body">给摩托车通电，车机屏幕点亮并进入可配对状态（部分车型需在仪表菜单中开启蓝牙）。</string>
+    <string name="onboarding_connect_step2_title">扫描设备</string>
+    <string name="onboarding_connect_step2_body">切换到"连接"页，点击"扫描设备"，应用会自动列出名称以 BYQ 或 SR 开头的车机设备。</string>
+    <string name="onboarding_connect_step3_title">点击连接</string>
+    <string name="onboarding_connect_step3_body">在列表中点击目标设备，等待顶部状态条显示"已连接"即可使用仪表、体检与投屏导航。</string>
+    <string name="onboarding_navi_title">如何开始导航</string>
+    <string name="onboarding_navi_step1_body">在"导航"页顶部搜索框输入目的地（如加油站、商场），或点击"家""公司"等常用地址。</string>
+    <string name="onboarding_navi_step2_body">点击搜索结果或地址即可自动规划路线，像专业导航软件一样直接开始导航。</string>
+    <string name="onboarding_navi_step3_body">导航中点击右上角"投屏"，即可把转向图标与剩余距离发送到车机屏幕，也可切换到横屏 HUD 大字体界面。</string>
+    <string name="onboarding_navi_key_hint">地图、搜索与路线规划需要高德地图 Key。可在高德开放平台（lbs.amap.com）免费申请（绑定包名 com.motohud.ble），之后在"设置"中粘贴。未配置 Key 时，蓝牙投屏演示导航仍可正常使用。</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="banner_connected">已连接：%1$s</string>
+    <string name="banner_disconnected">未连接车机 · 点击前往连接</string>
+    <string name="about_body">机车车机助手 v%1$s（%2$d）\n\n面向支持 BLE 车机互联的摩托车仪表的自用工具：实时数据、车辆体检、故障码读取、投屏导航与通知转发。\n\n本应用与任何整车厂商、车机厂商均无从属关系，也不包含其任何代码或资源；地图与地点搜索由高德开放平台提供，需自行申请 Key。\n\n所有车辆数据仅在本地处理，不上传服务器。</string>
+    <string name="settings_amap_key">高德地图 Key</string>
+    <string name="settings_privacy">隐私政策</string>
+    <string name="settings_onboarding">重新查看新手引导</string>
+    <string name="settings_notify">通知转发设置</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
+</resources>

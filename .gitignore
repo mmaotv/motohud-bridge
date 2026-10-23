@@ -1,0 +1,22 @@
+*.iml
+.gradle
+build/
+**/build/
+/local.properties
+local.properties
+/.idea
+.idea/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+/app/release
+
+# Kotlin 编译守护进程会话文件
+.kotlin/
+**/.kotlin/
+
+# 高德 SDK 由 tools/prepare_amap_sdk.py 下载生成，不随仓库分发
+/app/libs/*.jar
+/app/src/main/jniLibs/
+/app/src/main/assets/

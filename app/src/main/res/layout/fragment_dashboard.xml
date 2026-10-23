@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/TextAppearance.Moto.Title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dashboard_title" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_speed" />
+
+                    <TextView
+                        android:id="@+id/tv_speed"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_rpm" />
+
+                    <TextView
+                        android:id="@+id/tv_rpm"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_fuel" />
+
+                    <TextView
+                        android:id="@+id/tv_fuel"
+                        style="@style/TelemetryValue"
+                        android:text="--.-" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_water_temp" />
+
+                    <TextView
+                        android:id="@+id/tv_water_temp"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_room_temp" />
+
+                    <TextView
+                        android:id="@+id/tv_room_temp"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_oil" />
+
+                    <TextView
+                        android:id="@+id/tv_oil"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_battery" />
+
+                    <TextView
+                        android:id="@+id/tv_battery"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_mileage" />
+
+                    <TextView
+                        android:id="@+id/tv_mileage"
+                        style="@style/TelemetryValue"
+                        android:text="0" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_max_speed" />
+
+                    <TextView
+                        android:id="@+id/tv_max_speed"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/TelemetryCard">
+
+                    <TextView
+                        style="@style/TelemetryLabel"
+                        android:text="@string/label_avg_speed" />
+
+                    <TextView
+                        android:id="@+id/tv_avg_speed"
+                        style="@style/TelemetryValue"
+                        android:text="--" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/inter"
+                android:text="@string/dashboard_tip"
+                android:textColor="@color/text_tertiary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <include
+        android:id="@+id/empty_state"
+        layout="@layout/layout_empty_state" />
+</FrameLayout>
