@@ -94,6 +94,9 @@ class GuidanceActivity : AppCompatActivity() {
     private var destLng = 0.0
     private var lastCameraMs = 0L
     private var stopped = false
+
+    /** 本次导航是否已调用过 engine.start（用于屏蔽引擎中的上一次导航残留状态） */
+    private var started = false
     private val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
 
     private val locationPermLauncher = registerForActivityResult(
@@ -207,7 +210,11 @@ class GuidanceActivity : AppCompatActivity() {
 
     private fun begin(start: Pair<Double, Double>?, r: RouteData?) {
         turnBanner.visibility = View.VISIBLE
+        arrivedOverlay.visibility = View.GONE
         engine.onStepChanged = { instruction -> speak(instruction) }
+        // 引擎为全局共享实例，上一次导航的 arrived=true 状态仍留在 StateFlow 里，
+        // 必须先置位再 start，避免首帧按旧状态误判「已到达」。
+        started = true
         engine.start(destName, destLat, destLng, start, r)
         if (start == null) {
             Toast.makeText(this, R.string.guidance_no_location, Toast.LENGTH_LONG).show()
@@ -319,6 +326,8 @@ class GuidanceActivity : AppCompatActivity() {
     }
 
     private fun render(s: NaviEngine.NaviState) {
+        // 路线规划尚未落地时不消费引擎里的历史状态（可能属于上一次导航）
+        if (!started) return
         if (!s.running && !s.arrived) return
 
         // 转向横幅
@@ -348,6 +357,8 @@ class GuidanceActivity : AppCompatActivity() {
             arrivedOverlay.visibility = View.VISIBLE
             turnBanner.visibility = View.GONE
         } else {
+            arrivedOverlay.visibility = View.GONE
+            turnBanner.visibility = View.VISIBLE
             followOnMap(s)
         }
     }

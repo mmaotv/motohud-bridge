@@ -38,6 +38,8 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // 便于直接产出可安装的 Release 包；发布到应用市场请替换为自己的签名
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

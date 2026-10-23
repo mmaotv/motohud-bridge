@@ -36,6 +36,14 @@
 暗色玻璃设计（tvOS 风格），主色 `#FF9F0A`：6 个页签 + 顶部连接状态条
 （灰点未连接 / 橙点连接中 / 绿点已连接并显示设备名），未连接的页签显示空态遮罩并提供「去连接」入口。
 
+| 新手引导 | 连接车机 | 连接页 |
+| --- | --- | --- |
+| ![引导](docs/screenshots/01-onboarding.png) | ![连接引导](docs/screenshots/02-onboarding-connect.png) | ![连接](docs/screenshots/03-connect.png) |
+
+| 仪表（未连接） | 地图与搜索 | 导航中 | 投屏 HUD |
+| --- | --- | --- | --- |
+| ![仪表](docs/screenshots/04-dashboard.png) | ![导航](docs/screenshots/05-navigation.png) | ![引导](docs/screenshots/06-guidance.png) | ![HUD](docs/screenshots/07-hud.png) |
+
 ---
 
 ## 快速开始
