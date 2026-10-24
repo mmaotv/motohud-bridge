@@ -14,6 +14,7 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.motohud.ble.data.BleDiagnostic
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -123,12 +124,14 @@ class BleConnectionManager(private val context: Context) {
                 BluetoothGatt.STATE_CONNECTED -> {
                     _state.value = State.CONNECTED
                     reconnectAttempts = 0
+                    BleDiagnostic.setState("CONNECTED")
                     _events.tryEmit(Event.ConnectionState(State.CONNECTED))
                     g.discoverServices()
                 }
                 BluetoothGatt.STATE_DISCONNECTED -> {
                     _state.value = State.DISCONNECTED
                     notifyCharacteristic = null
+                    BleDiagnostic.setState("DISCONNECTED")
                     _events.tryEmit(Event.ConnectionState(State.DISCONNECTED))
                     scheduleReconnect()
                 }
@@ -137,15 +140,18 @@ class BleConnectionManager(private val context: Context) {
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
+                BleDiagnostic.log("服务发现失败 status=$status")
                 _events.tryEmit(Event.Error("服务发现失败 status=$status"))
                 return
             }
             val service = g.getService(UUID.fromString(BleConstants.UUID_SERVICE))
             val ch = service?.getCharacteristic(UUID.fromString(BleConstants.UUID_NOTIFY))
             if (ch == null) {
+                BleDiagnostic.log("未找到服务/特征")
                 _events.tryEmit(Event.Error("未找到服务 ${BleConstants.UUID_SERVICE} / 特征 ${BleConstants.UUID_NOTIFY}"))
                 return
             }
+            BleDiagnostic.log("服务发现成功，准备开启通知")
             notifyCharacteristic = ch
             enableNotify(g, ch)
         }
@@ -154,8 +160,10 @@ class BleConnectionManager(private val context: Context) {
             if (d.uuid == UUID.fromString(BleConstants.UUID_CCCD)) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d(TAG, "CCCD written, notify ready")
+                    BleDiagnostic.setNotifyReady(true)
                     emitNotifyReady()
                 } else {
+                    BleDiagnostic.log("打开通知失败 status=$status")
                     _events.tryEmit(Event.Error("打开通知失败 status=$status"))
                 }
             }
@@ -181,6 +189,7 @@ class BleConnectionManager(private val context: Context) {
             status: Int
         ) {
             mainHandler.removeCallbacks(writeWatchdog)
+            BleDiagnostic.onWriteResult(status == BluetoothGatt.GATT_SUCCESS, ch.value.toHexString())
             _events.tryEmit(Event.WriteResult(status == BluetoothGatt.GATT_SUCCESS, ch.value.toHexString()))
             writeBusy = false
             drainWriteQueue()
@@ -190,6 +199,7 @@ class BleConnectionManager(private val context: Context) {
             val hex = value.toHexString()
             val frame = BleProtocol.parseFrame(hex)
             Log.d(TAG, "onNotify: $hex")
+            BleDiagnostic.onNotify(hex)
             _events.tryEmit(Event.NotifyData(hex, frame))
         }
     }
@@ -255,6 +265,7 @@ class BleConnectionManager(private val context: Context) {
         _events.tryEmit(Event.ConnectionState(State.CONNECTING))
         val device: BluetoothDevice = adapter.getRemoteDevice(address)
         _connectedName = device.name
+        BleDiagnostic.onNewConnection(device.name)
         gatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             device.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
         } else {
@@ -285,9 +296,11 @@ class BleConnectionManager(private val context: Context) {
         }
         if (ch == null || _state.value != State.CONNECTED) {
             _events.tryEmit(Event.WriteResult(false, ""))
+            BleDiagnostic.onWriteResult(false, "")
             return
         }
         val data = BleProtocol.encodeCommand(text)
+        BleDiagnostic.onSend(text)
         synchronized(writeQueue) {
             writeQueue.addLast(data)
         }

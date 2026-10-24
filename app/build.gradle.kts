@@ -22,8 +22,8 @@ android {
         applicationId = "com.motohud.ble"
         minSdk = 24
         targetSdk = 36
-versionCode = 9
-versionName = "2.2.5"
+versionCode = 10
+versionName = "2.2.6"
 
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("String", "AMAP_API_KEY", "\"$amapApiKey\"")

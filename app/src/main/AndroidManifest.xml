@@ -140,6 +140,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MotoHeadUnit" />
 
+        <!-- 蓝牙连接诊断 -->
+        <activity
+            android:name=".ui.diagnostic.DiagnosticActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MotoHeadUnit" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

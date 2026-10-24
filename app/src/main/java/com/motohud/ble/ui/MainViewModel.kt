@@ -152,6 +152,7 @@ class MainViewModel(app: MotoHudApp) : ViewModel() {
 
     /** 握手（BaseNaviActivity.java:255 / NormalMotorFragment.java:1850） */
     fun sendHello() {
+        com.motohud.ble.data.BleDiagnostic.markHelloSent()
         ble.sendCommand(BleConstants.cmdHello(android.os.Build.BRAND))
     }
 

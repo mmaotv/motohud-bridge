@@ -266,6 +266,13 @@
     <string name="settings_notify">通知转发设置</string>
     <string name="settings_about">关于</string>
     <string name="settings_clear_cache">清除缓存</string>
+    <string name="settings_diagnostic">连接诊断</string>
+    <string name="diagnostic_title">蓝牙连接诊断</string>
+    <string name="diagnostic_copy">复制诊断信息</string>
+    <string name="diagnostic_clear">清空</string>
+    <string name="diagnostic_cleared">已清空诊断记录</string>
+    <string name="diagnostic_copied">已复制到剪贴板，可粘贴发送</string>
+    <string name="diagnostic_detail_hint">以下为完整链路记录（连接→服务发现→通知开启→握手→收帧→发指令）：</string>
     <string name="cache_dialog_title">清除缓存</string>
     <string name="cache_dialog_msg">当前缓存：%1$s\n\n缓存主要来自地图瓦片与搜索结果，清理后不影响任何用户数据，地图会在使用中自动重新下载。</string>
     <string name="cache_clear_btn">清除</string>

@@ -30,6 +30,7 @@ import com.motohud.ble.R
 import com.motohud.ble.ble.BleConnectionManager
 import com.motohud.ble.data.AppCache
 import com.motohud.ble.service.NotificationForwardService
+import com.motohud.ble.ui.diagnostic.DiagnosticActivity
 import com.motohud.ble.ui.navi.KeySetupDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -245,6 +246,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.settings_amap_key),
             getString(R.string.settings_privacy),
             getString(R.string.settings_clear_cache),
+            getString(R.string.settings_diagnostic),
             getString(R.string.settings_about)
         )
         MotoDialog.builder(this)
@@ -255,7 +257,8 @@ class MainActivity : AppCompatActivity() {
                     1 -> KeySetupDialog().show(supportFragmentManager, "key_setup")
                     2 -> showPrivacy()
                     3 -> showClearCache()
-                    4 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
+                    4 -> startActivity(Intent(this, DiagnosticActivity::class.java))
+                    5 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
                         startActivity(Intent(this, it))
                     }
                 }
