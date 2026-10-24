@@ -63,10 +63,20 @@ class BleConnectionManager(private val context: Context) {
     private var notifyCharacteristic: BluetoothGattCharacteristic? = null
     private var reconnectAttempts = 0
     private var scanning = false
+    private var notifyReadyEmitted = false
 
     /** Android BLE 一次只能挂一个写操作，原厂 FastBle 内部有队列，这里等价实现 */
     private val writeQueue = ArrayDeque<ByteArray>()
     private var writeBusy = false
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** 写看门狗：NO_RESPONSE 回调偶发不触发时仍能推进队列，避免整条链路卡死 */
+    private val writeWatchdog = Runnable {
+        if (writeBusy) {
+            Log.w(TAG, "write watchdog fired, releasing busy")
+            writeBusy = false
+            drainWriteQueue()
+        }
+    }
 
     val scanResults = mutableMapOf<String, ScanItem>()
 
@@ -141,13 +151,13 @@ class BleConnectionManager(private val context: Context) {
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS &&
-                d.uuid == UUID.fromString(BleConstants.UUID_CCCD)
-            ) {
-                Log.d(TAG, "CCCD written, notify ready")
-                _events.tryEmit(Event.NotifyReady)
-            } else if (status != BluetoothGatt.GATT_SUCCESS) {
-                _events.tryEmit(Event.Error("打开通知失败 status=$status"))
+            if (d.uuid == UUID.fromString(BleConstants.UUID_CCCD)) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    Log.d(TAG, "CCCD written, notify ready")
+                    emitNotifyReady()
+                } else {
+                    _events.tryEmit(Event.Error("打开通知失败 status=$status"))
+                }
             }
         }
 
@@ -170,6 +180,7 @@ class BleConnectionManager(private val context: Context) {
             ch: BluetoothGattCharacteristic,
             status: Int
         ) {
+            mainHandler.removeCallbacks(writeWatchdog)
             _events.tryEmit(Event.WriteResult(status == BluetoothGatt.GATT_SUCCESS, ch.value.toHexString()))
             writeBusy = false
             drainWriteQueue()
@@ -185,6 +196,25 @@ class BleConnectionManager(private val context: Context) {
 
     private fun ByteArray.toHexString(): String =
         joinToString("") { String.format("%02X", it) }
+
+    /** 通知就绪：CCCD 写成功后发出；带兜底定时器防止回调未触发时握手卡住 */
+    private fun emitNotifyReady() {
+        if (notifyReadyEmitted) return
+        notifyReadyEmitted = true
+        _events.tryEmit(Event.NotifyReady)
+    }
+
+    private fun scheduleNotifyReadyFallback() {
+        mainHandler.removeCallbacks(notifyReadyFallback)
+        mainHandler.postDelayed(notifyReadyFallback, 1500L)
+    }
+
+    private val notifyReadyFallback = Runnable {
+        if (!notifyReadyEmitted) {
+            Log.w(TAG, "CCCD callback missed, emitting NotifyReady by fallback")
+            emitNotifyReady()
+        }
+    }
 
     @SuppressLint("MissingPermission")
     fun startScan() {
@@ -234,6 +264,7 @@ class BleConnectionManager(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     private fun enableNotify(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
+        notifyReadyEmitted = false
         g.setCharacteristicNotification(ch, true)
         val cccd = ch.getDescriptor(UUID.fromString(BleConstants.UUID_CCCD))
         if (cccd == null) {
@@ -241,6 +272,7 @@ class BleConnectionManager(private val context: Context) {
             return
         }
         cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        scheduleNotifyReadyFallback()
         g.writeDescriptor(cccd)
     }
 
@@ -285,8 +317,11 @@ class BleConnectionManager(private val context: Context) {
             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         }
         ch.value = data
+        mainHandler.removeCallbacks(writeWatchdog)
+        mainHandler.postDelayed(writeWatchdog, 2000L)
         @Suppress("DEPRECATION") val ok = gatt?.writeCharacteristic(ch) == true
         if (!ok) {
+            mainHandler.removeCallbacks(writeWatchdog)
             writeBusy = false
             _events.tryEmit(Event.WriteResult(false, data.toHexString()))
         }
@@ -300,6 +335,9 @@ class BleConnectionManager(private val context: Context) {
         gatt = null
         notifyCharacteristic = null
         synchronized(writeQueue) { writeQueue.clear(); writeBusy = false }
+        mainHandler.removeCallbacks(writeWatchdog)
+        mainHandler.removeCallbacks(notifyReadyFallback)
+        notifyReadyEmitted = false
         _connectedName = null
         _state.value = State.DISCONNECTED
         _events.tryEmit(Event.ConnectionState(State.DISCONNECTED))
