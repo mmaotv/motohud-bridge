@@ -7,4 +7,8 @@
     <external-cache-path
         name="external_updates"
         path="updates/" />
+    <!-- 诊断日志导出文件（external-files/diagnostic/） -->
+    <external-files-path
+        name="diag"
+        path="diagnostic/" />
 </paths>

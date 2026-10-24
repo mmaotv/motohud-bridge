@@ -1,18 +1,29 @@
 package com.motohud.ble.data
 
+import android.content.Context
 import com.motohud.ble.ble.BleProtocol
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 蓝牙连接诊断记录器（单例）。
  *
  * 在 BleConnectionManager / MainViewModel 的关键节点调用，持续记录整条链路：
  *   连接状态 → 服务发现 → CCCD 通知开启 → HELLO 握手 → 收帧(原始+解码) → 发送指令结果
- * 即使诊断页未打开也在累积，方便用户在车机现场把文本复制出来反馈。
+ *
+ * 持久化：每条日志同时异步追加到 filesDir/ble_diagnostic/diag.log（单线程写、1MB 自动轮转），
+ * 因此即便一次测试产生成千上万帧，也不会像内存那样被截断；诊断页可随时读取完整文件，
+ * 并导出一个 .txt 文件通过系统分享面板发出（不依赖电脑）。
  */
 object BleDiagnostic {
 
@@ -46,7 +57,29 @@ object BleDiagnostic {
     data class SentLine(val text: String, val ok: Boolean?)
     data class LogLine(val time: String, val msg: String)
 
-    /** 一次新的连接尝试开始时调用，清空会话级计数 */
+    private val ioExecutor = Executors.newSingleThreadExecutor()
+    private var logFile: File? = null
+    private var writer: BufferedWriter? = null
+    private val writerBusy = AtomicBoolean(false)
+    private const val MAX_FILE_BYTES = 1024 * 1024L // 1MB 后轮转
+
+    fun attach(context: Context) {
+        val dir = File(context.getExternalFilesDir(null), "ble_diagnostic")
+        if (!dir.exists()) dir.mkdirs()
+        logFile = File(dir, "diag.log")
+        openWriter()
+    }
+
+    private fun openWriter() {
+        try {
+            writer?.close()
+            writer = BufferedWriter(FileWriter(logFile, true))
+        } catch (_: Exception) {
+            writer = null
+        }
+    }
+
+    /** 一次新的连接尝试开始时调用，清空会话级计数（文件日志保留历史，不清空） */
     fun onNewConnection(name: String?) {
         _deviceName.value = name
         _state.value = "CONNECTING"
@@ -84,7 +117,7 @@ object BleDiagnostic {
     }
 
     fun onSend(text: String) {
-        _sent.value = (_sent.value + SentLine(text, null)).takeLast(20)
+        _sent.value = (_sent.value + SentLine(text, null)).takeLast(40)
         log("发送: $text")
     }
 
@@ -110,11 +143,71 @@ object BleDiagnostic {
         _lastSummary.value = ""
         _sent.value = emptyList()
         _log.value = emptyList()
+        // 清空落盘日志
+        ioExecutor.execute {
+            try {
+                writer?.close()
+                logFile?.delete()
+                openWriter()
+            } catch (_: Exception) {
+            }
+        }
     }
 
     fun log(msg: String) {
         val t = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        _log.value = (_log.value + LogLine(t, msg)).takeLast(150)
+        _log.value = (_log.value + LogLine(t, msg)).takeLast(300)
+        appendToFile("[$t] $msg")
+    }
+
+    private fun appendToFile(line: String) {
+        ioExecutor.execute {
+            try {
+                val f = logFile ?: return@execute
+                if (f.exists() && f.length() > MAX_FILE_BYTES) {
+                    // 轮转：旧文件改名 .1，重新开新文件
+                    writer?.close()
+                    val rotated = File(f.parent, "diag.log.1")
+                    if (rotated.exists()) rotated.delete()
+                    f.renameTo(rotated)
+                    openWriter()
+                }
+                writer?.appendLine(line)
+                writer?.flush()
+            } catch (e: Exception) {
+                writer = null
+            }
+        }
+    }
+
+    /** 读取完整落盘日志（最多返回末尾 80KB，避免一次性载入过大） */
+    fun loadPersisted(): String {
+        val f = logFile ?: return ""
+        if (!f.exists()) return ""
+        return try {
+            val bytes = f.length()
+            if (bytes <= 80 * 1024) f.readText()
+            else {
+                val raf = f.inputStream().bufferedReader()
+                // 跳过前面，取末尾 80KB
+                val skip = (bytes - 80 * 1024).coerceAtLeast(0)
+                raf.skip(skip)
+                val tail = raf.readText()
+                "...(更早的日志已省略)...\n$tail"
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    /** 导出为 .txt 文件到 external-files/diagnostic/，供系统分享面板发出 */
+    suspend fun export(context: Context): File = withContext(Dispatchers.IO) {
+        val dir = File(context.getExternalFilesDir(null), "diagnostic")
+        if (!dir.exists()) dir.mkdirs()
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val out = File(dir, "ble_diagnostic_$stamp.txt")
+        out.writeText(loadPersisted().ifEmpty { exportText() })
+        out
     }
 
     private fun summarize(hex: String): String {
@@ -137,7 +230,7 @@ object BleDiagnostic {
     }
 
     fun exportText(): String = buildString {
-        append("=== 蓝牙连接诊断 ===\n")
+        append("=== 蓝牙连接诊断（内存快照） ===\n")
         append("状态: ${_state.value}\n")
         append("设备: ${_deviceName.value ?: "无"}\n")
         append("通知通道: ${if (_notifyReady.value) "已开启" else "未开启"}\n")

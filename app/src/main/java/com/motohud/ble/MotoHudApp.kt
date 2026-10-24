@@ -4,6 +4,7 @@ import android.app.Application
 import com.motohud.ble.amap.AmapManager
 import com.motohud.ble.ble.BleConnectionManager
 import com.motohud.ble.data.AppDatabase
+import com.motohud.ble.data.BleDiagnostic
 import com.motohud.ble.data.FaultRepository
 import com.motohud.ble.data.SearchEngine
 import com.motohud.ble.data.bike.BikePrefs
@@ -32,6 +33,8 @@ class MotoHudApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 诊断日志落盘（filesDir/ble_diagnostic/diag.log），供现场导出
+        BleDiagnostic.attach(this)
         // 恢复上次选择的车型
         BikePrefs.init(this)
         // 导航偏好（路线偏好 / 语音开关 / 息屏导航）
