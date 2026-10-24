@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置
+
+  高德地图/搜索/定位 SDK 内部仍有部分请求走 HTTP（瓦片、日志上报、部分检索接口）。
+  Android 9（API 28）起系统默认禁止明文流量，会导致搜索返回 1002「网络异常」，
+  而地图瓦片却能正常显示——现象很有迷惑性。
+
+  这里只对高德系域名放行明文，其余域名仍强制 HTTPS，比全局
+  usesCleartextTraffic="true" 更收敛。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">amap.com</domain>
+        <domain includeSubdomains="true">autonavi.com</domain>
+        <domain includeSubdomains="true">is.autonavi.com</domain>
+        <domain includeSubdomains="true">restapi.amap.com</domain>
+        <domain includeSubdomains="true">a.amap.com</domain>
+        <domain includeSubdomains="true">mobile.amap.com</domain>
+        <domain includeSubdomains="true">digraph.amap.com</domain>
+        <domain includeSubdomains="true">apilocate.amap.com</domain>
+        <domain includeSubdomains="true">dualstack-www.amap.com</domain>
+    </domain-config>
+</network-security-config>

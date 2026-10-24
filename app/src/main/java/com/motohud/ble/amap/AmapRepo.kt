@@ -71,9 +71,19 @@ class AmapRepo(private val context: Context) {
     }
 
     /**
-     * 驾车路线规划（速度优先策略）。
+     * 驾车路线规划。
+     *
+     * @param strategy 高德驾车策略（`RouteSearch.Driving*` 常量）
+     * @param modeLabel 写进结果的模式描述，供界面显示
      */
-    suspend fun planDriveRoute(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): RoutePlanResult {
+    suspend fun planDriveRoute(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        strategy: Int = RouteSearch.DrivingDefault,
+        modeLabel: String = ""
+    ): RoutePlanResult {
         return suspendCancellableCoroutine { cont ->
             try {
                 val routeSearch = RouteSearch(context)
@@ -83,7 +93,7 @@ class AmapRepo(private val context: Context) {
                 )
                 val query = RouteSearch.DriveRouteQuery(
                     fromAndTo,
-                    RouteSearch.DrivingDefault,
+                    strategy,
                     null,
                     null,
                     ""
@@ -92,7 +102,7 @@ class AmapRepo(private val context: Context) {
                     override fun onDriveRouteSearched(result: com.amap.api.services.route.DriveRouteResult?, rCode: Int) {
                         val path: DrivePath? = result?.paths?.firstOrNull()
                         if (rCode == 1000 && path != null) {
-                            cont.resume(RoutePlanResult.Success(path.toRouteData()))
+                            cont.resume(RoutePlanResult.Success(path.toRouteData(modeLabel)))
                         } else {
                             cont.resume(
                                 RoutePlanResult.Failure(
@@ -130,8 +140,31 @@ class AmapRepo(private val context: Context) {
         }
     }
 
-    // ---------- 转换 ----------
+    /**
+     * 摩托车可达路网近似算路。
+     *
+     * 高德搜索 SDK 没有摩托车策略（官方摩托算路只在收费的导航 SDK 里），
+     * 这里用「躲避拥堵 + 不走快速路」的驾车策略来近似：国内禁摩/限行主要针对
+     * 快速路、高架、隧道与城市主干道，绕开快速路能规避掉大部分硬禁区。
+     */
+    suspend fun planMotorcycleRoute(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        avoidHighway: Boolean = true
+    ): RoutePlanResult {
+        val strategy = if (avoidHighway) {
+            // 不走高速 + 躲避拥堵 + 避免收费：最贴近摩托车可达路网
+            RouteSearch.DrivingNoHighAvoidCongestionSaveMoney
+        } else {
+            RouteSearch.DrivingAvoidCongestion
+        }
+        val label = if (avoidHighway) "摩托车 · 避开高速/快速路" else "摩托车 · 避开拥堵"
+        return planDriveRoute(fromLat, fromLng, toLat, toLng, strategy, label)
+    }
 
+    // ---------- 转换 ----------
     private fun Tip.toItem(): TipItem? {
         val p = point ?: return null
         return TipItem(
@@ -143,12 +176,13 @@ class AmapRepo(private val context: Context) {
         )
     }
 
-    private fun DrivePath.toRouteData(): RouteData {
+    private fun DrivePath.toRouteData(modeLabel: String = ""): RouteData {
         val steps = this.steps.orEmpty().map { it.toRouteStep() }
         return RouteData(
             distanceM = distance,
             durationS = duration.toFloat(),
-            steps = steps
+            steps = steps,
+            modeLabel = modeLabel
         )
     }
 

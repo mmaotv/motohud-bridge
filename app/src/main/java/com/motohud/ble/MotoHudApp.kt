@@ -20,7 +20,10 @@ class MotoHudApp : Application() {
 
     /** 全局单例导航引擎（手机导航页与车机投屏 HUD 共享同一实例） */
     val naviEngine: RouteNaviEngine by lazy {
-        RouteNaviEngine(getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager)
+        RouteNaviEngine(
+            this,
+            getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager
+        )
     }
 
     /** BLE 导航指令转发器（保证同一时刻只有一个界面在发指令） */
@@ -30,6 +33,8 @@ class MotoHudApp : Application() {
         super.onCreate()
         // 恢复上次选择的车型
         BikePrefs.init(this)
+        // 导航偏好（摩托车模式 / 语音开关）
+        com.motohud.ble.data.NaviPrefs.init(this)
         // 已同意隐私政策时预热高德 SDK（未同意则等引导页授权后再初始化）
         if (AmapManager.isPrivacyAgreed(this) && AmapManager.hasKey(this)) {
             AmapManager.initMap(this)

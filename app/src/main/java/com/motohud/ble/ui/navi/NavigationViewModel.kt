@@ -157,14 +157,25 @@ class NavigationViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 路线规划 ----------
 
     /**
-     * 规划驾车路线。起点用当前定位；未获得定位时返回失败。
+     * 规划路线。起点用当前定位；未获得定位时返回失败。
+     * 按 [NaviPrefs.motorcycle] 选择摩托车近似策略或普通驾车策略。
      */
     suspend fun planRoute(toLat: Double, toLng: Double): RoutePlanResult {
         val from = currentLocation
             ?: return RoutePlanResult.Failure("尚未获取到当前位置，请检查定位权限后重试")
         if (!amapReady) return RoutePlanResult.Failure("KEY_MISSING")
         AmapManager.initSearch(getApplication())
-        return amapRepo.planDriveRoute(from.first, from.second, toLat, toLng)
+        return if (com.motohud.ble.data.NaviPrefs.motorcycle.value) {
+            amapRepo.planMotorcycleRoute(
+                from.first,
+                from.second,
+                toLat,
+                toLng,
+                com.motohud.ble.data.NaviPrefs.avoidHighway.value
+            )
+        } else {
+            amapRepo.planDriveRoute(from.first, from.second, toLat, toLng)
+        }
     }
 
     // ---------- 常用地址 ----------

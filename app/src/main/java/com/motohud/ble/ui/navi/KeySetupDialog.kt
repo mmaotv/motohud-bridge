@@ -13,9 +13,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import com.motohud.ble.R
+import com.motohud.ble.amap.AmapErrorCode
 import com.motohud.ble.amap.AmapManager
+import com.motohud.ble.amap.AmapRepo
+import com.motohud.ble.amap.TipsResult
+import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
 /**
@@ -63,6 +68,12 @@ class KeySetupDialog : DialogFragment() {
         }
         root.addView(info)
 
+        val et = TextInputEditText(ctx).apply {
+            hint = getString(R.string.amap_key_input_hint)
+            setText(AmapManager.apiKey(ctx))
+            setSingleLine()
+        }
+
         val actions = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(8), 0, dp(8))
@@ -76,6 +87,33 @@ class KeySetupDialog : DialogFragment() {
                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("amap", "包名：$pkg\nSHA1：$sha1"))
                 Toast.makeText(ctx, R.string.amap_info_copied, Toast.LENGTH_LONG).show()
+            }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        actions.addView(TextView(ctx).apply {
+            text = getString(R.string.amap_test)
+            textSize = 12f
+            setTextColor(resources.getColor(R.color.accent, null))
+            setPadding(dp(8), dp(6), dp(16), dp(6))
+            setOnClickListener {
+                val key = et.text?.toString()?.trim().orEmpty()
+                if (key.isNotEmpty()) AmapManager.setApiKey(ctx, key)
+                AmapManager.initSearch(ctx)
+                info.text = getString(R.string.amap_testing)
+                val act = activity ?: return@setOnClickListener
+                act.lifecycleScope.launch {
+                    val r = runCatching { AmapRepo(ctx).searchTips("天安门", "北京") }.getOrNull()
+                    info.text = when (r) {
+                        is TipsResult.Ok -> getString(R.string.amap_test_ok, r.items.size)
+                        is TipsResult.Err -> buildString {
+                            append(getString(R.string.amap_test_fail, r.code))
+                            append("\n")
+                            append(AmapErrorCode.reason(r.code))
+                            append("\n")
+                            append(AmapErrorCode.advice(r.code))
+                        }
+                        else -> getString(R.string.amap_test_network)
+                    }
+                }
             }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         actions.addView(TextView(ctx).apply {
@@ -93,11 +131,6 @@ class KeySetupDialog : DialogFragment() {
         })
         root.addView(actions)
 
-        val et = TextInputEditText(ctx).apply {
-            hint = getString(R.string.amap_key_input_hint)
-            setText(AmapManager.apiKey(ctx))
-            setSingleLine()
-        }
         root.addView(et)
 
         return AlertDialog.Builder(ctx)

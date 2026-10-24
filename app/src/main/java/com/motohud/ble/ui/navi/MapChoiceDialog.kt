@@ -11,19 +11,23 @@ import com.motohud.ble.R
 import com.motohud.ble.navi.CoordConverter
 
 /**
- * 地图选择对话框（复刻原 App NaviUtil.mapNavi）。
+ * 地图选择对话框（复刻原 App NaviUtil.mapNavi，并补上"手机导航"）。
  *
- * 选项（按原 App 顺序，仅列出已安装的）：
- *  1. 百度地图   baidumap://map/direction?...（GCJ02 → BD09 转换后跳转）
+ * 选项顺序：
+ *  0. 手机导航（本机）→ 本 App 竖屏全屏导航页 GuidanceActivity（同时向车机推流）
+ *  1. 蓝牙投屏导航 → 启动 HUD（横屏大字 + BLE 转发）
  *  2. 高德地图   androidamap://navi?...
- *  3. 腾讯地图   qqmap://map/routeplan?...
- *  4. 蓝牙投屏导航 → 启动 HUD（模拟导航 + BLE 转发）
+ *  3. 百度地图   baidumap://map/direction?...（GCJ02 → BD09 转换后跳转）
+ *  4. 腾讯地图   qqmap://map/routeplan?...
  *  5. 系统地图   geo: intent 兜底
  */
 class MapChoiceDialog : DialogFragment() {
 
     /** 选择"蓝牙投屏导航"回调 */
     var onBleNavi: (() -> Unit)? = null
+
+    /** 选择"手机导航（本机）"回调 */
+    var onPhoneNavi: (() -> Unit)? = null
 
     private var lat = 0.0
     private var lng = 0.0
@@ -37,6 +41,11 @@ class MapChoiceDialog : DialogFragment() {
         data class Choice(val label: String, val pkg: String?, val action: () -> Unit)
 
         val choices = mutableListOf<Choice>()
+
+        // 手机导航（本机竖屏全屏导航页）—— 原实现缺失，导致只有"投屏"没有"手机导航"
+        choices += Choice(getString(R.string.navi_phone_mode), null) {
+            onPhoneNavi?.invoke()
+        }
 
         // 蓝牙投屏导航（原 App 中仅连接车载蓝牙时出现，这里始终可用）
         choices += Choice(getString(R.string.map_ble_navi), null) {

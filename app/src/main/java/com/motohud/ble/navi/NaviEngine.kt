@@ -52,7 +52,13 @@ interface NaviEngine {
         /** 已行驶距离（米） */
         val traveled: Int = 0,
         /** 是否基于真实规划路线（false=直线演示模式） */
-        val onRoute: Boolean = false
+        val onRoute: Boolean = false,
+        /** 当前定位水平精度（米，0=未知） */
+        val accuracy: Float = 0f,
+        /** 定位来源类型（高德 locationType：1=GPS 6=网络 8=融合 0=推算） */
+        val locType: Int = 0,
+        /** 本帧是否来自卫星定位（决定"信号弱"提示） */
+        val fromSatellite: Boolean = false
     )
 
     val state: StateFlow<NaviState>
@@ -115,7 +121,9 @@ data class RouteStep(
 data class RouteData(
     val distanceM: Float,
     val durationS: Float,
-    val steps: List<RouteStep>
+    val steps: List<RouteStep>,
+    /** 规划模式描述，如「摩托车 · 不走快速路」 */
+    val modeLabel: String = ""
 )
 
 /** 高德 IconType 常用值（com.amap.api.navi.enums.IconType） */
@@ -153,6 +161,7 @@ private data class CumPoint(val lat: Double, val lng: Double, val dist: Double)
  *   5. 无规划路线时退化为直线演示模式（测试/HUD 演示用）。
  */
 class RouteNaviEngine(
+    private val context: android.content.Context?,
     private val locationManager: LocationManager?
 ) : NaviEngine {
 
@@ -169,6 +178,20 @@ class RouteNaviEngine(
     private var curLng = 0.0
     private var curBearing = 0f
 
+    /** 高德连续定位（GCJ02 + 多源融合）；无 Key/未授权时为 null */
+    private val locator = context?.let { com.motohud.ble.amap.AmapLocator(it) }
+
+    /** 轨迹滤波：压掉精度差、跳点与静止抖动 */
+    private val filter = LocationFilter()
+
+    private var lastAccuracy = 0f
+    private var lastLocType = 0
+    private var lastFromSatellite = false
+    private var locatorActive = false
+
+    /** 最近一帧高德定位的时间：用于决定系统定位是否作为兜底 */
+    private var lastAmapFixMs = 0L
+
     // ---------- 路线数据 ----------
     private var cumulative: List<CumPoint> = emptyList()
     private var stepEndDist: List<Double> = emptyList()   // 每步结束时的累计距离
@@ -183,17 +206,19 @@ class RouteNaviEngine(
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
             if (!running) return
-            lastGpsTime = System.currentTimeMillis()
-            curLat = location.latitude
-            curLng = location.longitude
-            if (location.hasBearing() && location.speed > 0.5f) curBearing = location.bearing
-            val gpsSpeed = if (location.hasSpeed()) location.speed * 3.6f else null
-            _state.value = _state.value.copy(
-                latitude = curLat,
-                longitude = curLng,
-                bearing = curBearing,
-                gpsActive = true,
-                speedKmh = gpsSpeed ?: _state.value.speedKmh
+            // 高德定位 5 秒内有输出时，系统定位只当兜底不用（避免两套定位打架）
+            if (System.currentTimeMillis() - lastAmapFixMs < 5_000L) return
+            // 关键：系统 LocationManager 返回 WGS84，而地图与规划路线都是 GCJ02。
+            // 不做转换会形成 300~700m 的恒定偏移，正是"导航一直漂"的根因。
+            val (gLat, gLng) = CoordConverter.wgs84ToGCJ(location.latitude, location.longitude)
+            acceptFix(
+                lat = gLat,
+                lng = gLng,
+                accuracy = if (location.hasAccuracy()) location.accuracy else 0f,
+                bearing = if (location.hasBearing()) location.bearing else Float.NaN,
+                speedMps = if (location.hasSpeed()) location.speed else 0f,
+                locType = if (location.provider == LocationManager.GPS_PROVIDER) 1 else 6,
+                fromSatellite = location.provider == LocationManager.GPS_PROVIDER
             )
         }
 
@@ -201,6 +226,54 @@ class RouteNaviEngine(
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
         override fun onProviderDisabled(provider: String) {}
+    }
+
+    /**
+     * 统一的定位入口：无论来自高德定位还是系统 GPS，都先过 [LocationFilter]。
+     * 被滤掉的帧不会刷新 lastGpsTime，于是引擎自动转入沿路线推算，界面不会乱跳。
+     */
+    private fun acceptFix(
+        lat: Double,
+        lng: Double,
+        accuracy: Float,
+        bearing: Float,
+        speedMps: Float,
+        locType: Int,
+        fromSatellite: Boolean
+    ) {
+        if (!running) return
+        val now = System.currentTimeMillis()
+        // 网络/基站定位（locType=6）在城市里误差常达几百米，精度字段却只报几十米，
+        // 一旦采信就会把车标甩到隔壁街区甚至隔壁城市。这里单独收紧门限。
+        if (locType == 6 && accuracy > 35f) return
+        val out = filter.onFix(
+            rawLat = lat,
+            rawLng = lng,
+            rawAccuracy = accuracy,
+            rawBearing = if (bearing.isFinite()) bearing else 0f,
+            rawSpeedMps = speedMps,
+            nowMs = now
+        ) ?: return
+
+        lastGpsTime = now
+        curLat = out.lat
+        curLng = out.lng
+        // 低速时 GPS 航向不可靠，不采信（否则车头会一直转）
+        if (out.speedMps > 1.2f && out.bearing.isFinite()) curBearing = out.bearing
+        lastAccuracy = if (out.accuracy > 0f) out.accuracy else accuracy
+        lastLocType = locType
+        lastFromSatellite = fromSatellite
+
+        _state.value = _state.value.copy(
+            latitude = curLat,
+            longitude = curLng,
+            bearing = curBearing,
+            gpsActive = true,
+            speedKmh = if (out.speedMps > 0.2f) out.speedMps * 3.6f else 0f,
+            accuracy = lastAccuracy,
+            locType = locType,
+            fromSatellite = fromSatellite
+        )
     }
 
     private val tick = object : Runnable {
@@ -223,10 +296,20 @@ class RouteNaviEngine(
         stopLocationUpdates()
         manualIcon = null
         lastIndex = 0
+        // 新一次导航必须清空滤波与定位历史，否则会沿用上一次的平滑中心
+        filter.reset()
+        lastGpsTime = 0L
+        lastAmapFixMs = 0L
+        lastAccuracy = 0f
+        lastLocType = 0
+        lastFromSatellite = false
 
         val (sLat, sLng) = startHint ?: lastKnownLocation() ?: NaviEngine.DEFAULT_START
         curLat = sLat
         curLng = sLng
+        // 用起点给滤波器打底：第一帧定位也要过跳点校验，
+        // 否则冷启动时一帧网络定位就能把车标甩走几百公里。
+        filter.seed(sLat, sLng, System.currentTimeMillis())
 
         if (route != null && route.steps.isNotEmpty() &&
             route.steps.any { it.polyline.size >= 2 }
@@ -327,6 +410,28 @@ class RouteNaviEngine(
             // ---------- 路线模式 ----------
             if (gpsFresh) {
                 lastIndex = nearestIndex(curLat, curLng, lastIndex)
+                // 车标吸附路线：导航软件一律把车标画在路上。
+                // 高德算路会把起点吸到最近可行驶道路，而 GPS 原始点常在路侧几十米外，
+                // 不吸附就会看到"车标在楼里 / 在路外"——这就是用户感知到的"漂移"。
+                val p = cumulative[lastIndex]
+                val off = LocationFilter.distanceM(curLat, curLng, p.lat, p.lng)
+                val snap = when {
+                    off > 60f -> if (lastAccuracy > 25f) 0.65f else 0f // 偏离过大：精度差才拉回
+                    off > 15f -> 0.75f
+                    off > 4f -> 0.5f
+                    else -> 0f
+                }
+                if (snap > 0f) {
+                    curLat += (p.lat - curLat) * snap
+                    curLng += (p.lng - curLng) * snap
+                }
+                if (com.motohud.ble.BuildConfig.DEBUG) {
+                    android.util.Log.d(
+                        "NaviEngine",
+                        "idx=$lastIndex off=${off.toInt()}m snap=$snap acc=${lastAccuracy.toInt()} " +
+                            "cur=($curLat,$curLng) road=(${p.lat},${p.lng})"
+                    )
+                }
             } else {
                 // GPS 失效：沿路线从当前投影点前进 stepM
                 lastIndex = advanceAlongRoute(lastIndex, stepM.toDouble())
@@ -500,6 +605,29 @@ class RouteNaviEngine(
     // ---------- 定位 ----------
 
     private fun requestLocationUpdates() {
+        // 双路并行：
+        //  - 高德连续定位优先（天然 GCJ02、多源融合、带速度与航向）；
+        //  - 系统定位始终注册作为兜底 —— 高德定位在某些机型/无网络时可能长期
+        //    不出点，只挂高德会退化成"永远在推算"，表现为导航不跟手、越走越偏。
+        val loc = locator
+        if (loc != null && runCatching { loc.isAvailable() }.getOrDefault(false)) {
+            loc.start(
+                onFix = { fix ->
+                    lastAmapFixMs = System.currentTimeMillis()
+                    acceptFix(
+                        lat = fix.lat,
+                        lng = fix.lng,
+                        accuracy = fix.accuracy,
+                        bearing = fix.bearing,
+                        speedMps = fix.speedMps,
+                        locType = fix.locationType,
+                        fromSatellite = fix.fromSatellite
+                    )
+                }
+            )
+            locatorActive = true
+        }
+        // 系统定位（已做 WGS84→GCJ02 转换，高德有输出时自动让位）
         val lm = locationManager ?: return
         try {
             @Suppress("MissingPermission")
@@ -512,6 +640,10 @@ class RouteNaviEngine(
     }
 
     private fun stopLocationUpdates() {
+        if (locatorActive) {
+            runCatching { locator?.stop() }
+            locatorActive = false
+        }
         try {
             locationManager?.removeUpdates(locationListener)
         } catch (_: Exception) {}
@@ -523,7 +655,8 @@ class RouteNaviEngine(
             @Suppress("MissingPermission")
             val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            loc?.let { it.latitude to it.longitude }
+            // 同样必须纠偏到 GCJ02，否则起点会整体偏出去
+            loc?.let { CoordConverter.wgs84ToGCJ(it.latitude, it.longitude) }
         } catch (_: Exception) {
             null
         }

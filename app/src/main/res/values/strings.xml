@@ -147,6 +147,8 @@
     <!-- 手动目的地 -->
     <string name="manual_dest_title">输入目的地</string>
     <string name="dest_name">目的地名称</string>
+    <string name="manual_dest_lat_hint">留空使用当前位置（%1$.6f）</string>
+    <string name="manual_dest_lng_hint">留空使用当前位置（%1$.6f）</string>
 
     <!-- 地图选择（复刻原车机 App 的地图选择逻辑） -->
     <string name="map_choice_title">选择导航方式</string>
@@ -193,9 +195,46 @@
     <string name="guidance_no_location">尚未获取到定位，正在使用默认起点演示；授权定位后将使用真实位置。</string>
     <string name="guidance_need_key">需要先配置高德地图 Key 才能使用路线导航。</string>
     <string name="guidance_demo_mode">未配置高德 Key，已进入演示模式（直线推算）。</string>
-    <string name="guidance_demo_short">演示模式（直线推算）</string>
+    <string name="guidance_demo_short">直线推算</string>
     <string name="guidance_exit_title">退出导航？</string>
     <string name="guidance_exit_message">退出后将停止向车机发送导航信息。</string>
+
+    <!-- 导航页新增 -->
+    <string name="navi_mode_motorcycle">摩托车</string>
+    <string name="navi_mode_car">驾车</string>
+    <string name="navi_mode_motorcycle_desc">避开高速 / 快速路，绕行地面道路（近似规避禁摩路段）</string>
+    <string name="navi_mode_car_desc">标准驾车路线，可上高速与快速路</string>
+    <string name="navi_voice">语音播报</string>
+    <string name="navi_voice_on">语音已开启</string>
+    <string name="navi_voice_off">语音已关闭</string>
+    <string name="navi_signal_weak">GPS 信号弱，已按路线推算</string>
+    <string name="navi_overview">全览路线</string>
+    <string name="navi_recenter">回到当前位置</string>
+    <string name="navi_cast_to_car">投屏到车机</string>
+    <string name="navi_route_mode">路线模式</string>
+    <string name="navi_motorcycle_title">摩托车路线</string>
+    <string name="navi_motorcycle_summary">高德搜索 SDK 没有摩托车算路（摩托策略属于收费的导航 SDK），本 App 用「躲避拥堵 + 不走快速路」的驾车策略近似规避禁摩路段。</string>
+    <string name="navi_motorcycle_avoid_highway">避开快速路 / 高架（推荐）</string>
+    <string name="navi_motorcycle_avoid_highway_desc">国内禁摩多针对快速路、高架与隧道，开启后绕行地面道路</string>
+    <string name="navi_motorcycle_legal">摩托车能否上路以当地法规与现场禁摩标志为准</string>
+    <string name="navi_replanning">正在重新规划…</string>
+    <string name="navi_mode_switched_motor">已切换为摩托车路线</string>
+    <string name="navi_mode_switched_car">已切换为驾车路线</string>
+    <string name="navi_accuracy_unknown">精度未知</string>
+    <string name="navi_gps_weak_title">定位精度较差</string>
+    <string name="navi_gps_weak_message">当前定位精度约 ±%1$d 米，可能是高架下、密集楼宇间或隧道附近。建议停到开阔处等待信号恢复；期间导航会沿路线推算，不影响投屏。</string>
+    <string name="navi_phone_mode">手机导航</string>
+    <string name="navi_cast_mode">投屏车机</string>
+    <string name="navi_phone_mode_desc">手机屏幕全屏地图 + 转向引导，同时继续向车机推送数据</string>
+    <string name="navi_cast_mode_desc">切到车机横屏大字 HUD，手机上的导航继续在后台运行</string>
+    <string name="navi_display_mode">显示方式</string>
+    <string name="navi_mode_phone_toast">已切到手机导航</string>
+    <string name="navi_mode_cast_toast">已切到车机投屏</string>
+    <string name="amap_test">测试</string>
+    <string name="amap_testing">正在测试搜索服务…</string>
+    <string name="amap_test_ok">✓ Key 可用，搜索服务正常（返回 %1$d 条结果）</string>
+    <string name="amap_test_fail">✗ 搜索失败（错误码 %1$d）</string>
+    <string name="amap_test_network">✗ 请求异常，请检查设备网络后重试</string>
 
     <!-- 新手引导 -->
     <string name="onboarding_next">下一步</string>

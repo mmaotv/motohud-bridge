@@ -16,6 +16,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -62,6 +65,12 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
     private lateinit var tvBleHint: TextView
     private lateinit var tvLocation: TextView
     private lateinit var fabLocation: View
+    private lateinit var chipsScroll: View
+    private lateinit var cardBottom: View
+    private lateinit var searchArea: View
+
+    /** 搜索建议列表的高度上限（屏高 62%） */
+    private var tipsMaxHeight = 0
 
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchRunnable: Runnable? = null
@@ -84,7 +93,21 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         tvBleHint = view.findViewById(R.id.tv_ble_hint)
         tvLocation = view.findViewById(R.id.tv_current_location)
         fabLocation = view.findViewById(R.id.fab_location)
+        chipsScroll = view.findViewById(R.id.chips_scroll)
+        cardBottom = view.findViewById(R.id.card_bottom)
+        searchArea = view.findViewById(R.id.search_area)
         mapView = view.findViewById(R.id.map_view)
+
+        // 顶部搜索区按状态栏高度留白（原先写死 44dp，刘海屏/手势导航下会压到状态栏）
+        ViewCompat.setOnApplyWindowInsetsListener(searchArea) { v, insets ->
+            val top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+            v.updateLayoutParams<androidx.constraintlayout.widget.ConstraintLayout.LayoutParams> {
+                topMargin = top + (8 * resources.displayMetrics.density).toInt()
+            }
+            insets
+        }
+        // 搜索建议列表的高度上限：约屏高 62%，保证不越过屏幕底部
+        tipsMaxHeight = (resources.displayMetrics.heightPixels * 0.62f).toInt()
 
         // ---------- 地图 ----------
         setupMap(savedInstanceState)
@@ -137,8 +160,21 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
                 launch {
                     vm.tips.collect { list ->
                         tipAdapter.submitList(list)
-                        rvTips.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
-                        if (list.isNotEmpty()) rvTips.scheduleLayoutAnimation()
+                        val active = list.isNotEmpty()
+                        rvTips.visibility = if (active) View.VISIBLE else View.GONE
+                        // 搜索建议展开时收起底部地址卡与浮动按钮，避免列表被遮挡
+                        chipsScroll.visibility = if (active) View.GONE else View.VISIBLE
+                        cardBottom.visibility = if (active) View.GONE else View.VISIBLE
+                        fabLocation.visibility = if (active) View.GONE else View.VISIBLE
+                        if (active) {
+                            // 按条目数估高，避免结果很少时拉出一大块空卡片
+                            val d = resources.displayMetrics.density
+                            val h = minOf(tipsMaxHeight, (list.size * 78 * d).toInt())
+                            if (h > 0) {
+                                rvTips.updateLayoutParams<LinearLayout.LayoutParams> { height = h }
+                            }
+                            rvTips.scheduleLayoutAnimation()
+                        }
                     }
                 }
                 launch {
@@ -327,9 +363,11 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         val etName = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_name)
         val etLat = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_lat)
         val etLng = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_lng)
+        // 坐标框只放 hint，不预填。
+        // 预填会让用户输入变成"追加"，得到 30.xxxx40.0801 这种拼接值，算出离谱路线。
         vm.currentLocation?.let { (lat, lng) ->
-            etLat.setText(lat.toString())
-            etLng.setText(lng.toString())
+            etLat.hint = getString(R.string.manual_dest_lat_hint, lat)
+            etLng.hint = getString(R.string.manual_dest_lng_hint, lng)
         }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.manual_dest_title)
@@ -347,8 +385,10 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
             }
             .setPositiveButton(R.string.start_navi) { _, _ ->
                 val name = etName.text?.toString()?.trim().orEmpty().ifEmpty { "目的地" }
-                val lat = etLat.text?.toString()?.trim()?.toDoubleOrNull()
-                val lng = etLng.text?.toString()?.trim()?.toDoubleOrNull()
+                // 坐标留空 = 用当前位置（hint 里已经给出提示）
+                val cur = vm.currentLocation
+                val lat = etLat.text?.toString()?.trim()?.toDoubleOrNull() ?: cur?.first
+                val lng = etLng.text?.toString()?.trim()?.toDoubleOrNull() ?: cur?.second
                 if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
                     Toast.makeText(requireContext(), R.string.place_input_invalid, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
@@ -370,6 +410,7 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
 
     private fun showMapChoiceFor(name: String, lat: Double, lng: Double) {
         val dialog = MapChoiceDialog.newInstance(name, lat, lng)
+        dialog.onPhoneNavi = { openGuidance(name, lat, lng) }
         dialog.onBleNavi = {
             val intent = Intent(requireContext(), HudActivity::class.java).apply {
                 putExtra(HudActivity.EXTRA_NAME, name)

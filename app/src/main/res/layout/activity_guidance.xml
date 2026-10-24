@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  手机导航页（专业导航软件布局）
+
+  层级：地图 → 顶部渐变 → 顶栏（返回/目的地/语音/投屏）→ 转向横幅 → 底部信息卡
+
+  本次修复：
+    1. 顶栏内所有按钮统一 44dp 圆形，目的地卡片改用圆角面板
+       （原先误用 oval 的 bg_fab，宽屏下会被拉成椭圆，文字溢出）；
+    2. 转向横幅放进顶栏的纵向容器里，随状态栏高度自适应，不再硬编码 marginTop；
+    3. root 不再 fitsSystemWindows，改由代码按 WindowInsets 给顶栏加 padding，
+       避免 44dp 固定值在刘海屏/手势导航上压到状态栏。
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/guidance_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_window"
-    android:fitsSystemWindows="true">
+    android:background="@color/bg_window">
 
     <!-- 地图 -->
     <com.amap.api.maps.MapView
@@ -13,127 +24,243 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 顶栏 -->
+    <!-- 顶部渐变（保证状态栏、顶栏在任意底图上可读） -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_gravity="top"
+        android:background="@drawable/scrim_navi_top" />
+
+    <!-- 顶栏 + 转向横幅 -->
     <LinearLayout
+        android:id="@+id/top_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="44dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
+        android:layout_gravity="top"
+        android:orientation="vertical"
         android:paddingStart="12dp"
-        android:paddingTop="8dp"
+        android:paddingTop="4dp"
         android:paddingEnd="12dp">
 
-        <ImageView
-            android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_fab"
-            android:contentDescription="@string/cancel"
-            android:padding="9dp"
-            android:src="@drawable/ic_arrow_back" />
-
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_fab"
-            android:orientation="vertical"
-            android:padding="8dp">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tv_dest_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/inter"
-                android:maxLines="1"
-                android:text="@string/hud_dest"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+            <ImageView
+                android:id="@+id/btn_back"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_navi_circle"
+                android:contentDescription="@string/cancel"
+                android:padding="11dp"
+                android:src="@drawable/ic_arrow_back"
+                app:tint="@color/text_primary" />
 
-            <TextView
-                android:id="@+id/tv_dest_sub"
-                android:layout_width="match_parent"
+            <!-- 目的地卡片 -->
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/inter"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_navi_panel"
+                android:orientation="vertical"
+                android:paddingStart="12dp"
+                android:paddingTop="7dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="7dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_dest_name"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/inter"
+                        android:maxLines="1"
+                        android:text="@string/hud_dest"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_mode_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_mode_badge"
+                        android:fontFamily="@font/inter"
+                        android:paddingStart="7dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="7dp"
+                        android:paddingBottom="2dp"
+                        android:text="@string/navi_mode_motorcycle"
+                        android:textColor="@color/accent"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_dest_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter"
+                    android:maxLines="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btn_voice"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_navi_circle"
+                android:contentDescription="@string/navi_voice"
+                android:padding="11dp"
+                android:src="@drawable/ic_volume_on"
+                app:tint="@color/text_primary" />
+
+            <ImageView
+                android:id="@+id/btn_cast"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_navi_circle"
+                android:contentDescription="@string/navi_cast"
+                android:padding="11dp"
+                android:src="@drawable/ic_cast"
+                app:tint="@color/accent" />
         </LinearLayout>
 
-        <ImageView
-            android:id="@+id/btn_cast"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/bg_fab"
-            android:contentDescription="@string/navi_cast"
-            android:padding="9dp"
-            android:src="@drawable/ic_cast" />
-    </LinearLayout>
-
-    <!-- 转向横幅 -->
-    <LinearLayout
-        android:id="@+id/turn_banner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="100dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/bg_card"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="14dp"
-        android:visibility="invisible">
-
-        <ImageView
-            android:id="@+id/iv_turn_icon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/hud_turn_icon"
-            android:src="@drawable/ic_turn_straight"
-            android:tint="@color/accent" />
-
+        <!-- 转向横幅（放在顶栏内，自动跟随状态栏高度） -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:id="@+id/turn_banner"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_navi_panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/iv_turn_icon"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:contentDescription="@string/hud_turn_icon"
+                android:src="@drawable/ic_turn_straight"
+                app:tint="@color/accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_turn_instruction"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter"
+                    android:maxLines="2"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_turn_road"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter"
+                    android:maxLines="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/tv_turn_instruction"
-                android:layout_width="match_parent"
+                android:id="@+id/tv_turn_distance"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/inter"
-                android:maxLines="2"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tv_turn_road"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
+                android:layout_marginStart="8dp"
                 android:fontFamily="@font/inter"
                 android:maxLines="1"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:minWidth="72dp"
+                android:gravity="end"
+                android:textColor="@color/accent"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                app:autoSizeMaxTextSize="26sp"
+                app:autoSizeMinTextSize="15sp"
+                app:autoSizeTextType="uniform" />
         </LinearLayout>
 
+        <!-- 信号弱提示 -->
         <TextView
-            android:id="@+id/tv_turn_distance"
+            android:id="@+id/tv_signal_warn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_navi_panel"
             android:fontFamily="@font/inter"
-            android:textColor="@color/accent"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="6dp"
+            android:text="@string/navi_signal_weak"
+            android:textColor="@color/orange"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 浮动：全览 / 回中 -->
+    <LinearLayout
+        android:id="@+id/map_actions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="212dp"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/btn_overview"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_navi_circle"
+            android:contentDescription="@string/navi_overview"
+            android:padding="11dp"
+            android:src="@drawable/ic_route"
+            app:tint="@color/text_primary" />
+
+        <ImageView
+            android:id="@+id/btn_recenter"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_navi_circle"
+            android:contentDescription="@string/navi_recenter"
+            android:padding="11dp"
+            android:src="@drawable/ic_my_location"
+            app:tint="@color/accent" />
     </LinearLayout>
 
     <!-- 底部信息卡 -->
@@ -144,7 +271,17 @@
         android:layout_gravity="bottom"
         android:background="@drawable/bg_bottom_card"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="18dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="12dp">
+
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_grabber" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -160,16 +297,22 @@
 
                 <TextView
                     android:id="@+id/tv_eta"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter"
+                    android:gravity="center"
+                    android:maxLines="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    app:autoSizeMaxTextSize="20sp"
+                    app:autoSizeMinTextSize="12sp"
+                    app:autoSizeTextType="uniform" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/guidance_eta"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp" />
@@ -184,16 +327,22 @@
 
                 <TextView
                     android:id="@+id/tv_remain"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter"
+                    android:gravity="center"
+                    android:maxLines="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    app:autoSizeMaxTextSize="20sp"
+                    app:autoSizeMinTextSize="12sp"
+                    app:autoSizeTextType="uniform" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/guidance_remain"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp" />
@@ -208,16 +357,22 @@
 
                 <TextView
                     android:id="@+id/tv_speed_live"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter"
+                    android:gravity="center"
+                    android:maxLines="1"
                     android:textColor="@color/accent"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    app:autoSizeMaxTextSize="20sp"
+                    app:autoSizeMinTextSize="12sp"
+                    app:autoSizeTextType="uniform" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/guidance_speed"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp" />
@@ -232,16 +387,23 @@
 
                 <TextView
                     android:id="@+id/tv_gps_mode"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter"
+                    android:gravity="center"
+                    android:maxLines="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:autoSizeMaxTextSize="14sp"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeTextType="uniform" />
 
                 <TextView
+                    android:id="@+id/tv_gps_quality"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/guidance_gps"
                     android:textColor="@color/text_tertiary"
                     android:textSize="11sp" />
@@ -252,7 +414,7 @@
             android:id="@+id/tv_guidance_ble_hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:fontFamily="@font/inter"
             android:text="@string/guidance_ble_hint"
             android:textColor="@color/text_tertiary"
@@ -269,7 +431,7 @@
                 android:id="@+id/btn_stop_navi"
                 style="@style/Widget.Moto.Button.Danger"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:text="@string/guidance_stop" />
 
@@ -277,10 +439,10 @@
                 android:id="@+id/btn_cast_navi"
                 style="@style/Widget.Moto.Button.Accent"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
-                android:text="@string/navi_cast" />
+                android:text="@string/navi_cast_to_car" />
         </LinearLayout>
     </LinearLayout>
 
@@ -341,10 +503,9 @@
             android:id="@+id/btn_finish_navi"
             style="@style/Widget.Moto.Button.Accent"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_marginTop="20dp"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp"
+            android:minWidth="160dp"
             android:text="@string/guidance_finish" />
     </LinearLayout>
 </FrameLayout>
