@@ -22,3 +22,6 @@ local.properties
 /app/src/main/assets/*
 # 但车型插画要进仓库（可自行替换同名文件）
 !/app/src/main/assets/bikes/
+
+# 本地测试截图（adb screencap 产物，不入库）
+test_shots/

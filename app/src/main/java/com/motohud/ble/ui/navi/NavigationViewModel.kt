@@ -39,8 +39,30 @@ class NavigationViewModel(app: Application) : AndroidViewModel(app) {
     var currentLocation: Pair<Double, Double>? = null
         private set
 
+    /**
+     * 当前位置流（GCJ02 纬度, 经度 + 精度）。
+     * 地图上的定位点要跟着它动，所以必须是可观察的。
+     */
+    private val _locationFlow = MutableStateFlow<LocationFix?>(null)
+    val locationFlow: StateFlow<LocationFix?> = _locationFlow.asStateFlow()
+
+    /** 一次定位结果 */
+    data class LocationFix(
+        val lat: Double,
+        val lng: Double,
+        val accuracy: Float
+    )
+
     private val _locationLabel = MutableStateFlow("")
     val locationLabel: StateFlow<String> = _locationLabel.asStateFlow()
+
+    /** 正在定位（界面显示进度） */
+    private val _locating = MutableStateFlow(false)
+    val locating: StateFlow<Boolean> = _locating.asStateFlow()
+
+    /** 当前定位精度（米），<=0 表示未知 */
+    private val _accuracy = MutableStateFlow(0f)
+    val accuracy: StateFlow<Float> = _accuracy.asStateFlow()
 
     /** POI 搜索结果 */
     private val _tips = MutableStateFlow<List<TipItem>>(emptyList())
@@ -61,11 +83,20 @@ class NavigationViewModel(app: Application) : AndroidViewModel(app) {
 
     private var tipsJob: Job? = null
 
+    private val locator = com.motohud.ble.amap.AmapLocator(app)
+
+    private var locatingJob: Job? = null
+    private var systemUpdatesOn = false
+
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            // 系统定位只作兜底：高德定位已经拿到值时不再覆盖（两者坐标基准不同）
+            if (currentLocation != null && !systemUpdatesOn) return
             val (lat, lng) = CoordConverter.wgs84ToGCJ(location.latitude, location.longitude)
             currentLocation = lat to lng
-            _locationLabel.value = "当前位置：${CoordConverter.formatLatLng(lat, lng)}"
+            _accuracy.value = location.accuracy
+            _locationFlow.value = LocationFix(lat, lng, location.accuracy)
+            _locationLabel.value = "当前位置 · ${CoordConverter.formatLatLng(lat, lng)}"
         }
 
         @Deprecated("旧版回调保留兼容")
@@ -78,23 +109,81 @@ class NavigationViewModel(app: Application) : AndroidViewModel(app) {
         refreshLocation()
     }
 
-    /** 请求定位更新（已有权限时注册） */
-    @Suppress("MissingPermission")
-    fun refreshLocation() {
-        try {
-            val last = locationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            last?.let {
-                val (lat, lng) = CoordConverter.wgs84ToGCJ(it.latitude, it.longitude)
-                currentLocation = lat to lng
-                _locationLabel.value = "当前位置：${CoordConverter.formatLatLng(lat, lng)}"
+    /**
+     * 刷新当前位置。
+     *
+     * 旧实现只有"读系统最后已知位置"一条路，而 `getLastKnownLocation` 拿到的是
+     * **系统缓存**，可能是几个小时前、甚至别的城市的位置，于是出现
+     * "人在重庆，导航页却一直显示北京"。
+     *
+     * 现在的顺序：
+     *  1. 系统缓存只作"占位"，且必须足够新（90 秒内），否则丢弃；
+     *  2. 主动向高德定位 SDK 要一次**新鲜**定位（不走缓存），拿到后覆盖；
+     *  3. 高德不可用 / 超时，才退回系统持续定位。
+     *
+     * @param force true = 用户点了刷新按钮，忽略"已在定位中"的拦截
+     */
+    fun refreshLocation(force: Boolean = false) {
+        seedFromSystem()
+        if (locatingJob?.isActive == true && !force) return
+        locatingJob?.cancel()
+        locatingJob = viewModelScope.launch {
+            _locating.value = true
+            val fix = runCatching { locator.locateOnce() }.getOrNull()
+            _locating.value = false
+            if (fix != null && !fix.isCache) {
+                currentLocation = fix.lat to fix.lng
+                _accuracy.value = fix.accuracy
+                _locationFlow.value = LocationFix(fix.lat, fix.lng, fix.accuracy)
+                _locationLabel.value = buildLabel(fix)
+            } else if (currentLocation == null) {
+                // 高德拿不到（无 Key / 无网络）→ 系统定位持续更新
+                startSystemUpdates()
             }
+        }
+    }
+
+    private fun buildLabel(fix: com.motohud.ble.amap.AmapLocator.Fix): String {
+        val addr = fix.address?.trim().orEmpty()
+        return if (addr.isNotEmpty()) {
+            "当前位置 · $addr"
+        } else {
+            "当前位置 · ${CoordConverter.formatLatLng(fix.lat, fix.lng)}"
+        }
+    }
+
+    /** 用系统最后已知位置占位；超过 90 秒的缓存直接丢弃 */
+    @Suppress("MissingPermission")
+    private fun seedFromSystem() {
+        if (!hasLocationPermission()) return
+        try {
+            val best = listOfNotNull(
+                locationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER),
+                locationManager?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            ).maxByOrNull { it.time } ?: return
+            val ageMs = System.currentTimeMillis() - best.time
+            if (ageMs > 90_000L) return
+            val (lat, lng) = CoordConverter.wgs84ToGCJ(best.latitude, best.longitude)
+            currentLocation = lat to lng
+            _accuracy.value = best.accuracy
+            _locationFlow.value = LocationFix(lat, lng, best.accuracy)
+            _locationLabel.value = "当前位置 · ${CoordConverter.formatLatLng(lat, lng)}"
+        } catch (_: Exception) {
+        }
+    }
+
+    /** 注册系统定位更新（仅在高德定位不可用时） */
+    @Suppress("MissingPermission")
+    private fun startSystemUpdates() {
+        if (systemUpdatesOn || !hasLocationPermission()) return
+        try {
             locationManager?.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER, 2000L, 5f, locationListener
             )
             locationManager?.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER, 2000L, 5f, locationListener
             )
+            systemUpdatesOn = true
         } catch (_: Exception) {
         }
     }
@@ -158,24 +247,18 @@ class NavigationViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * 规划路线。起点用当前定位；未获得定位时返回失败。
-     * 按 [NaviPrefs.motorcycle] 选择摩托车近似策略或普通驾车策略。
+     * 策略由 [com.motohud.ble.data.NaviPrefs.strategy] 按「路线偏好」组合得出。
      */
     suspend fun planRoute(toLat: Double, toLng: Double): RoutePlanResult {
         val from = currentLocation
             ?: return RoutePlanResult.Failure("尚未获取到当前位置，请检查定位权限后重试")
-        if (!amapReady) return RoutePlanResult.Failure("KEY_MISSING")
+        if (!amapReady) return RoutePlanResult.Failure("地图服务不可用")
         AmapManager.initSearch(getApplication())
-        return if (com.motohud.ble.data.NaviPrefs.motorcycle.value) {
-            amapRepo.planMotorcycleRoute(
-                from.first,
-                from.second,
-                toLat,
-                toLng,
-                com.motohud.ble.data.NaviPrefs.avoidHighway.value
-            )
-        } else {
-            amapRepo.planDriveRoute(from.first, from.second, toLat, toLng)
-        }
+        return amapRepo.planDriveRoute(
+            from.first, from.second, toLat, toLng,
+            com.motohud.ble.data.NaviPrefs.strategy(),
+            com.motohud.ble.data.NaviPrefs.summary()
+        )
     }
 
     // ---------- 常用地址 ----------

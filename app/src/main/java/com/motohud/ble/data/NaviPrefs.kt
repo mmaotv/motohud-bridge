@@ -2,6 +2,7 @@ package com.motohud.ble.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.amap.api.services.route.RouteSearch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,24 +10,23 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * 导航偏好（跨会话持久化）。
  *
- * ## 关于「摩托车专用导航」
+ * ## 关于「摩托车专用导航」与「路线偏好」
  *
- * 高德确实有摩托车路径规划，但**两条路都走不通**：
+ * 高德确实有摩托车路径规划，但两条路都走不通：
  *  1. 导航 SDK（AMapNavi）的 `PathPlanningStrategy.MOTOR_MULTIPLE_*` 需要单独申请
- *     导航 SDK 授权，且官方文档明确写着「摩托车路径规划是收费接口，需通过工单
- *     提交商务合作类工单，否则默认无法算路成功」；
- *  2. 搜索 SDK（我们用的这个，免费的）`RouteSearch` 只有驾车/步行/骑行/公交，
- *     **没有任何摩托车策略**。
+ *     商务授权，未授权时算路直接失败；
+ *  2. 本项目用的免费搜索 SDK `RouteSearch` **没有任何摩托车策略**。
  *
- * 所以本 App 的做法是「摩托车可达路网近似」：
- *  - 用驾车算路，但策略固定为 **躲避拥堵 + 不走快速路**（`DrivingAvoidCongestionNoExpressways`）。
- *    国内绝大多数城市的禁摩/限行是针对快速路、高架、隧道和城市主干道，
- *    不走快速路能规避掉大部分硬禁区，这也是骑行类 App 的通用做法；
- *  - 同时提供「避开高速」开关（摩托车上高速在多数省份违法）；
- *  - 导航页常驻提示「以现场禁摩标志为准」，不做虚假承诺。
+ * 所以这里改成「路线偏好」来表达摩托车需求：禁摩城市主要限制快速路/高架/隧道，
+ * 用「不走高速 + 躲避拥堵」的组合策略就能规避掉大部分硬禁区。用户也可以按所在
+ * 城市自己勾选（少收费、高速优先、时间优先等），比单一的"摩托车模式"更实用。
  *
- * 如果将来拿到导航 SDK 的商务授权，只要在这里把 `motorcycle` 映射到
- * `MOTOR_MULTIPLE_DEFAULT` 即可，上层无需改动。
+ * ## 多选如何落到单一 strategy
+ *
+ * 高德驾车算路的 strategy 是一个 int，不是位掩码，不能真的"同时勾三个"。
+ * 但 SDK 提供了覆盖各种组合的 MULTI_CHOICE 常量（会一次返回多个方案），
+ * 所以这里按"约束强弱"把多选合并成最接近的那个组合策略，见 [strategy]。
+ * 优先级：不走高速 > 少收费 > 躲避拥堵 > 高速优先 > 时间优先 > 路况优先。
  */
 object NaviPrefs {
 
@@ -35,9 +35,18 @@ object NaviPrefs {
     private const val KEY_AVOID_HIGHWAY = "avoid_highway"
     private const val KEY_VOICE = "voice_on"
     private const val KEY_PHONE_MODE = "phone_mode"
+    private const val KEY_SCREEN_OFF = "screen_off_navi"
+
+    private const val KEY_SMART = "route_smart"
+    private const val KEY_AVOID_JAM = "route_avoid_jam"
+    private const val KEY_AVOID_TOLL = "route_avoid_toll"
+    private const val KEY_HIGHWAY_FIRST = "route_highway_first"
+    private const val KEY_TIME_FIRST = "route_time_first"
+    private const val KEY_TRAFFIC_FIRST = "route_traffic_first"
 
     private lateinit var prefs: SharedPreferences
 
+    /** 骑行模式（保留：影响默认偏好与界面文案，不再单独做算路分支） */
     private val _motorcycle = MutableStateFlow(true)
     val motorcycle: StateFlow<Boolean> = _motorcycle.asStateFlow()
 
@@ -47,9 +56,34 @@ object NaviPrefs {
     private val _voice = MutableStateFlow(true)
     val voice: StateFlow<Boolean> = _voice.asStateFlow()
 
-    /** 手机导航模式（true=竖屏手机导航界面，false=地图+投屏卡片） */
+    /** 手机导航模式（true=竖屏手机导航界面，false=投屏车机） */
     private val _phoneMode = MutableStateFlow(true)
     val phoneMode: StateFlow<Boolean> = _phoneMode.asStateFlow()
+
+    /** 息屏继续导航（关闭屏幕后仍保持定位、播报与车机转发） */
+    private val _screenOffNavi = MutableStateFlow(true)
+    val screenOffNavi: StateFlow<Boolean> = _screenOffNavi.asStateFlow()
+
+    // ---------- 路线偏好 ----------
+
+    /** 高德智能推荐（与其他选项互斥：勾上它就忽略其余选项） */
+    private val _smart = MutableStateFlow(true)
+    val smart: StateFlow<Boolean> = _smart.asStateFlow()
+
+    private val _avoidJam = MutableStateFlow(true)
+    val avoidJam: StateFlow<Boolean> = _avoidJam.asStateFlow()
+
+    private val _avoidToll = MutableStateFlow(false)
+    val avoidToll: StateFlow<Boolean> = _avoidToll.asStateFlow()
+
+    private val _highwayFirst = MutableStateFlow(false)
+    val highwayFirst: StateFlow<Boolean> = _highwayFirst.asStateFlow()
+
+    private val _timeFirst = MutableStateFlow(false)
+    val timeFirst: StateFlow<Boolean> = _timeFirst.asStateFlow()
+
+    private val _trafficFirst = MutableStateFlow(true)
+    val trafficFirst: StateFlow<Boolean> = _trafficFirst.asStateFlow()
 
     fun init(context: Context) {
         if (::prefs.isInitialized) return
@@ -58,6 +92,13 @@ object NaviPrefs {
         _avoidHighway.value = prefs.getBoolean(KEY_AVOID_HIGHWAY, true)
         _voice.value = prefs.getBoolean(KEY_VOICE, true)
         _phoneMode.value = prefs.getBoolean(KEY_PHONE_MODE, true)
+        _screenOffNavi.value = prefs.getBoolean(KEY_SCREEN_OFF, true)
+        _smart.value = prefs.getBoolean(KEY_SMART, true)
+        _avoidJam.value = prefs.getBoolean(KEY_AVOID_JAM, true)
+        _avoidToll.value = prefs.getBoolean(KEY_AVOID_TOLL, false)
+        _highwayFirst.value = prefs.getBoolean(KEY_HIGHWAY_FIRST, false)
+        _timeFirst.value = prefs.getBoolean(KEY_TIME_FIRST, false)
+        _trafficFirst.value = prefs.getBoolean(KEY_TRAFFIC_FIRST, true)
     }
 
     fun setMotorcycle(on: Boolean) {
@@ -78,5 +119,90 @@ object NaviPrefs {
     fun setPhoneMode(on: Boolean) {
         _phoneMode.value = on
         prefs.edit().putBoolean(KEY_PHONE_MODE, on).apply()
+    }
+
+    fun setScreenOffNavi(on: Boolean) {
+        _screenOffNavi.value = on
+        prefs.edit().putBoolean(KEY_SCREEN_OFF, on).apply()
+    }
+
+    fun setSmart(on: Boolean) {
+        _smart.value = on
+        prefs.edit().putBoolean(KEY_SMART, on).apply()
+    }
+
+    fun setAvoidJam(on: Boolean) {
+        _avoidJam.value = on
+        prefs.edit().putBoolean(KEY_AVOID_JAM, on).apply()
+    }
+
+    fun setAvoidToll(on: Boolean) {
+        _avoidToll.value = on
+        prefs.edit().putBoolean(KEY_AVOID_TOLL, on).apply()
+    }
+
+    fun setHighwayFirst(on: Boolean) {
+        _highwayFirst.value = on
+        prefs.edit().putBoolean(KEY_HIGHWAY_FIRST, on).apply()
+    }
+
+    fun setTimeFirst(on: Boolean) {
+        _timeFirst.value = on
+        prefs.edit().putBoolean(KEY_TIME_FIRST, on).apply()
+    }
+
+    fun setTrafficFirst(on: Boolean) {
+        _trafficFirst.value = on
+        prefs.edit().putBoolean(KEY_TRAFFIC_FIRST, on).apply()
+    }
+
+    /**
+     * 当前偏好对应的高德驾车 strategy。
+     *
+     * MULTI_CHOICE 系列会一次返回多套方案，界面因此可以"先选路线再导航"。
+     */
+    fun strategy(): Int {
+        if (_smart.value) return RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST_AVOID_CONGESTION
+        val noHigh = _avoidHighway.value
+        val noToll = _avoidToll.value
+        val noJam = _avoidJam.value
+        val highFirst = _highwayFirst.value
+        val timeFirst = _timeFirst.value
+        val trafficFirst = _trafficFirst.value
+
+        return when {
+            // 不走高速的各种组合（摩托车/禁摩城市的主要诉求）
+            noHigh && noToll && noJam ->
+                RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_NO_HIGHWAY_SAVE_MONEY
+            noHigh && noToll -> RouteSearch.DRIVING_MULTI_CHOICE_SAVE_MONEY_NO_HIGHWAY
+            noHigh && noJam -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_NO_HIGHWAY
+            noHigh -> RouteSearch.DRIVING_MULTI_CHOICE_NO_HIGHWAY
+            // 少收费
+            noToll && noJam -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_SAVE_MONEY
+            noToll -> RouteSearch.DRIVING_MULTI_CHOICE_SAVE_MONEY
+            // 躲避拥堵
+            noJam && highFirst -> RouteSearch.DRIVING_MULTI_CHOICE_HIGHWAY_AVOID_CONGESTION
+            noJam && (trafficFirst || timeFirst) -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION
+            noJam -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION
+            // 高速优先
+            highFirst -> RouteSearch.DRIVING_MULTI_CHOICE_HIGHWAY
+            // 时间 / 路况
+            timeFirst -> RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST
+            trafficFirst -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION
+            else -> RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SAVE_MONEY_SHORTEST
+        }
+    }
+
+    /** 当前偏好的简短摘要，用于界面徽章 */
+    fun summary(): String {
+        if (_smart.value) return "智能推荐"
+        val parts = mutableListOf<String>()
+        if (_avoidHighway.value) parts += "不走高速"
+        if (_avoidToll.value) parts += "少收费"
+        if (_avoidJam.value) parts += "避拥堵"
+        if (_highwayFirst.value) parts += "高速优先"
+        if (_timeFirst.value) parts += "时间优先"
+        if (_trafficFirst.value && !_avoidJam.value) parts += "路况优先"
+        return if (parts.isEmpty()) "智能推荐" else parts.joinToString("·")
     }
 }

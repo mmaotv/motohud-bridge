@@ -162,28 +162,34 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="@string/navi_manage_places"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btn_route_prefs"
+                style="@style/Widget.Moto.Button.Ghost"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="@string/route_prefs"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/btn_manual_dest"
                 style="@style/Widget.Moto.Button.Ghost"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:layout_weight="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="@string/navi_manual_dest"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btn_map_choice"
-                style="@style/Widget.Moto.Button.Ghost"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/navi_btn_map"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- 高德 Key 未配置引导 -->

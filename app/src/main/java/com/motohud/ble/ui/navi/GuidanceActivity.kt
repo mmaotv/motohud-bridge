@@ -29,7 +29,7 @@ import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.Polyline
 import com.amap.api.maps.model.PolylineOptions
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.motohud.ble.ui.common.MotoDialog
 import com.motohud.ble.MotoHudApp
 import com.motohud.ble.R
 import com.motohud.ble.amap.AmapManager
@@ -43,6 +43,7 @@ import com.motohud.ble.data.NaviPrefs
 import com.motohud.ble.navi.CoordConverter
 import com.motohud.ble.navi.NaviEngine
 import com.motohud.ble.navi.RouteData
+import com.motohud.ble.navi.RouteHandoff
 import com.motohud.ble.navi.RouteNaviEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -120,6 +121,12 @@ class GuidanceActivity : AppCompatActivity() {
 
     /** 本次导航是否已调用过 engine.start（屏蔽引擎里上一次导航的残留状态） */
     private var started = false
+
+    /** 导航历史：本次导航对应的记录 id，停止/到达时用它补完用时与车况 */
+    private var historyId: Long? = null
+
+    /** 本次导航是否投屏到了车机（记进历史） */
+    private var castToDevice = false
 
     /** 用户手动拖动地图后暂停自动跟随，点「回中」恢复 */
     private var userPanned = false
@@ -228,7 +235,7 @@ class GuidanceActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-        tvModeBadge.setOnClickListener { showRouteModeDialog() }
+        tvModeBadge.setOnClickListener { showRoutePrefsDialog() }
         findViewById<View>(R.id.btn_overview).setOnClickListener {
             route?.let { drawRoute(it, fitAll = true) }
         }
@@ -247,14 +254,22 @@ class GuidanceActivity : AppCompatActivity() {
     }
 
     private fun updateModeBadge() {
-        tvModeBadge.setText(
-            if (NaviPrefs.motorcycle.value) R.string.navi_mode_motorcycle else R.string.navi_mode_car
-        )
+        tvModeBadge.text = NaviPrefs.summary()
     }
 
     // ---------- 路线规划 + 启动 ----------
 
     private fun planAndStart() {
+        // 从「选择路线」页交接过来的方案：直接用，不再重复算路
+        val handed = RouteHandoff.take(destName, destLat, destLng)
+        if (handed != null) {
+            route = handed
+            drawRoute(handed, fitAll = true)
+            tvDestSub.text = routeSummary(handed)
+            begin(currentStart(), handed)
+            return
+        }
+
         val start = currentStart()
         if (!AmapManager.hasKey(this) || !AmapManager.isPrivacyAgreed(this)) {
             Toast.makeText(this, R.string.guidance_demo_mode, Toast.LENGTH_LONG).show()
@@ -265,16 +280,12 @@ class GuidanceActivity : AppCompatActivity() {
         lifecycleScope.launch {
             AmapManager.initSearch(this@GuidanceActivity)
             val from = start ?: NaviEngine.DEFAULT_START
-            val motorcycle = NaviPrefs.motorcycle.value
-            val avoidHighway = NaviPrefs.avoidHighway.value
+            val strategy = NaviPrefs.strategy()
+            val summary = NaviPrefs.summary()
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = AmapRepo(this@GuidanceActivity)
-                    if (motorcycle) {
-                        repo.planMotorcycleRoute(from.first, from.second, destLat, destLng, avoidHighway)
-                    } else {
-                        repo.planDriveRoute(from.first, from.second, destLat, destLng)
-                    }
+                    AmapRepo(this@GuidanceActivity)
+                        .planDriveRoute(from.first, from.second, destLat, destLng, strategy, summary)
                 }
             }
             planningOverlay.visibility = View.GONE
@@ -292,12 +303,8 @@ class GuidanceActivity : AppCompatActivity() {
                         getString(R.string.guidance_plan_failed, r.message),
                         Toast.LENGTH_LONG
                     ).show()
-                    // 摩托车策略算不出时回退默认驾车，避免直接掉进演示模式
-                    if (NaviPrefs.motorcycle.value) {
-                        fallbackToDrive(from)
-                    } else {
-                        begin(start, null)
-                    }
+                    // 当前偏好算不出时退回默认策略再试一次，避免直接掉到离线引导
+                    fallbackToDefault(from)
                 }
                 else -> begin(start, null)
             }
@@ -308,19 +315,23 @@ class GuidanceActivity : AppCompatActivity() {
         append(CoordConverter.formatDistance(r.distanceM.toInt()))
         append(" · ")
         append(CoordConverter.formatEta(r.durationS.toInt()))
-        if (r.modeLabel.isNotBlank()) {
+        val note = r.label.ifBlank { r.modeLabel }
+        if (note.isNotBlank()) {
             append(" · ")
-            append(r.modeLabel)
+            append(note)
         }
     }
 
-    /** 摩托车策略算路失败时，退回默认驾车策略再试一次 */
-    private fun fallbackToDrive(from: Pair<Double, Double>) {
+    /** 当前偏好的策略算不出路线时，用高德默认策略再试一次 */
+    private fun fallbackToDefault(from: Pair<Double, Double>) {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    AmapRepo(this@GuidanceActivity)
-                        .planDriveRoute(from.first, from.second, destLat, destLng)
+                    AmapRepo(this@GuidanceActivity).planDriveRoute(
+                        from.first, from.second, destLat, destLng,
+                        com.amap.api.services.route.RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST,
+                        "推荐"
+                    )
                 }
             }
             val r = result.getOrNull()
@@ -343,6 +354,21 @@ class GuidanceActivity : AppCompatActivity() {
         // 必须先置位再 start，避免首帧按旧状态误判「已到达」。
         started = true
         engine.start(destName, destLat, destLng, start, r)
+        // 息屏导航：前台服务 + 唤醒锁，保证熄屏后定时器不被冻结
+        if (NaviPrefs.screenOffNavi.value) {
+            com.motohud.ble.service.NaviForegroundService.start(this)
+        }
+        // 导航历史：先把「开始」记下来，结束时再补用时与车况
+        historyId = com.motohud.ble.data.NaviHistory.begin(
+            app = app,
+            destName = destName,
+            destLat = destLat,
+            destLng = destLng,
+            startName = start?.let { com.motohud.ble.navi.CoordConverter.formatLatLng(it.first, it.second) } ?: "未知",
+            startLat = start?.first ?: 0.0,
+            startLng = start?.second ?: 0.0,
+            distanceM = r?.distanceM?.toDouble() ?: 0.0
+        )
         if (start == null) {
             Toast.makeText(this, R.string.guidance_no_location, Toast.LENGTH_LONG).show()
         }
@@ -360,6 +386,11 @@ class GuidanceActivity : AppCompatActivity() {
         if (started && st.running && st.latitude != 0.0 && st.longitude != 0.0) {
             return st.latitude to st.longitude
         }
+        // 其次用「选择路线」页算路时用的起点，保证路线与起点一致
+        val fromLat = intent.getDoubleExtra(EXTRA_FROM_LAT, 0.0)
+        val fromLng = intent.getDoubleExtra(EXTRA_FROM_LNG, 0.0)
+        if (fromLat != 0.0 && fromLng != 0.0) return fromLat to fromLng
+
         val granted = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
@@ -380,61 +411,19 @@ class GuidanceActivity : AppCompatActivity() {
         }
     }
 
-    // ---------- 路线模式切换 ----------
+    // ---------- 路线偏好 ----------
 
-    private fun showRouteModeDialog() {
-        val v = layoutInflater.inflate(R.layout.dialog_route_mode, null)
-        val optMotor = v.findViewById<View>(R.id.opt_motorcycle)
-        val optCar = v.findViewById<View>(R.id.opt_car)
-        val checkMotor = v.findViewById<View>(R.id.check_motorcycle)
-        val checkCar = v.findViewById<View>(R.id.check_car)
-        val rowAvoid = v.findViewById<View>(R.id.row_avoid_highway)
-        val switchAvoid = v.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
-            R.id.switch_avoid_highway
-        )
-
-        fun renderSelection() {
-            val motor = NaviPrefs.motorcycle.value
-            checkMotor.visibility = if (motor) View.VISIBLE else View.INVISIBLE
-            checkCar.visibility = if (motor) View.INVISIBLE else View.VISIBLE
-            checkMotor.alpha = 1f
-            checkCar.alpha = 1f
-            rowAvoid.visibility = if (motor) View.VISIBLE else View.GONE
-            switchAvoid.isChecked = NaviPrefs.avoidHighway.value
-        }
-        renderSelection()
-
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.navi_route_mode)
-            .setView(v)
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-
-        fun applyMode(toMotor: Boolean) {
-            if (toMotor == NaviPrefs.motorcycle.value) {
-                dialog.dismiss()
-                return
-            }
-            NaviPrefs.setMotorcycle(toMotor)
+    /**
+     * 打开路线偏好。改变偏好后立即按新策略重算路线，不退出导航页。
+     * 「不走高速 + 躲避拥堵」这组偏好就是骑行场景下对摩托车导航的替代方案。
+     */
+    private fun showRoutePrefsDialog() {
+        val d = RoutePrefsDialog()
+        d.onApplied = {
             updateModeBadge()
-            dialog.dismiss()
-            Toast.makeText(
-                this,
-                if (toMotor) R.string.navi_mode_switched_motor else R.string.navi_mode_switched_car,
-                Toast.LENGTH_SHORT
-            ).show()
             replan()
         }
-
-        optMotor.setOnClickListener { applyMode(true) }
-        optCar.setOnClickListener { applyMode(false) }
-        switchAvoid.setOnCheckedChangeListener { _, checked ->
-            NaviPrefs.setAvoidHighway(checked)
-            if (NaviPrefs.motorcycle.value) replan()
-        }
-        switchAvoid.isChecked = NaviPrefs.avoidHighway.value
-
-        dialog.show()
+        d.show(supportFragmentManager, "route_prefs")
     }
 
     /** 按当前偏好重新算路（不退出页面） */
@@ -443,16 +432,12 @@ class GuidanceActivity : AppCompatActivity() {
         lifecycleScope.launch {
             AmapManager.initSearch(this@GuidanceActivity)
             val from = currentStart() ?: NaviEngine.DEFAULT_START
-            val motorcycle = NaviPrefs.motorcycle.value
-            val avoidHighway = NaviPrefs.avoidHighway.value
+            val strategy = NaviPrefs.strategy()
+            val summary = NaviPrefs.summary()
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val repo = AmapRepo(this@GuidanceActivity)
-                    if (motorcycle) {
-                        repo.planMotorcycleRoute(from.first, from.second, destLat, destLng, avoidHighway)
-                    } else {
-                        repo.planDriveRoute(from.first, from.second, destLat, destLng)
-                    }
+                    AmapRepo(this@GuidanceActivity)
+                        .planDriveRoute(from.first, from.second, destLat, destLng, strategy, summary)
                 }
             }
             planningOverlay.visibility = View.GONE
@@ -671,6 +656,9 @@ class GuidanceActivity : AppCompatActivity() {
                 stopped = true
                 app.naviForwarder.forwardFinish()
                 speak(getString(R.string.hud_arrived))
+                // 导航历史：到达即结束这条记录
+                com.motohud.ble.data.NaviHistory.finish(app, historyId, castToDevice)
+                historyId = null
             }
             arrivedOverlay.visibility = View.VISIBLE
             turnBanner.visibility = View.GONE
@@ -703,7 +691,7 @@ class GuidanceActivity : AppCompatActivity() {
         }
         render()
 
-        val dialog = MaterialAlertDialogBuilder(this)
+        val dialog = MotoDialog.builder(this)
             .setTitle(R.string.navi_display_mode)
             .setView(v)
             .setNegativeButton(R.string.cancel, null)
@@ -725,6 +713,8 @@ class GuidanceActivity : AppCompatActivity() {
     }
 
     private fun openHud() {
+        // 记进导航历史：这趟导航有投屏到车机
+        castToDevice = true
         startActivity(
             Intent(this, HudActivity::class.java).apply {
                 putExtra(HudActivity.EXTRA_NAME, destName)
@@ -735,7 +725,7 @@ class GuidanceActivity : AppCompatActivity() {
     }
 
     private fun confirmExit() {
-        MaterialAlertDialogBuilder(this)
+        MotoDialog.builder(this)
             .setTitle(R.string.guidance_exit_title)
             .setMessage(R.string.guidance_exit_message)
             .setNegativeButton(R.string.cancel, null)
@@ -752,12 +742,16 @@ class GuidanceActivity : AppCompatActivity() {
         stopped = true
         engine.onStepChanged = null
         engine.stop()
+        com.motohud.ble.service.NaviForegroundService.stop(this)
         if (sendFinish) {
             app.naviForwarder.forwardFinish()
         } else {
             app.naviForwarder.forwardExit()
         }
         turnBanner.visibility = View.GONE
+        // 导航历史：结束这条记录，补上用时与结束时的车况
+        com.motohud.ble.data.NaviHistory.finish(app, historyId, castToDevice)
+        historyId = null
     }
 
     // ---------- TTS ----------
@@ -799,13 +793,24 @@ class GuidanceActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        app.naviForwarder.detach(TAG_FORWARD)
         super.onStop()
+        // 息屏导航：熄屏时 Activity 会走到 onStop，但导航还在继续，
+        // 此时不能解除转发，否则车机上的数据就停住了。
+        // 只有真正结束导航 / 退出页面才 detach。
+        if (stopped || isFinishing) app.naviForwarder.detach(TAG_FORWARD)
     }
 
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
+        // 导航可能是在车机 HUD 页被「停止导航」停掉的：那边只 finish 了 HUD，
+        // 本页的 stopped 不会跟着变，回到这里还会显示"导航中"，用户以为没停掉。
+        // 发现引擎已停就同步收尾并退出。
+        if (!stopped && !engine.state.value.running) {
+            stopNavi(sendFinish = false)
+            finish()
+            return
+        }
         // 从车机 HUD 返回本页：显示方式实际已回到「手机导航」，
         // 同步一次偏好，避免对话框里的勾选和当前页面不一致。
         NaviPrefs.setPhoneMode(true)
@@ -832,8 +837,13 @@ class GuidanceActivity : AppCompatActivity() {
             stopped = true
             engine.onStepChanged = null
             engine.stop()
+            com.motohud.ble.service.NaviForegroundService.stop(this)
             app.naviForwarder.forwardExit()
+            // 导航历史：中途退出也算一次导航结束，用时记到退出时刻
+            com.motohud.ble.data.NaviHistory.finish(app, historyId, castToDevice)
+            historyId = null
         }
+        app.naviForwarder.detach(TAG_FORWARD)
         mapView?.onDestroy()
         mapView = null
         aMap = null
@@ -849,6 +859,8 @@ class GuidanceActivity : AppCompatActivity() {
         const val EXTRA_NAME = "extra_name"
         const val EXTRA_LAT = "extra_lat"
         const val EXTRA_LNG = "extra_lng"
+        const val EXTRA_FROM_LAT = "extra_from_lat"
+        const val EXTRA_FROM_LNG = "extra_from_lng"
         private const val TAG_FORWARD = "guidance"
     }
 }

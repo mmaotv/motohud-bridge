@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 路线选择页：先看方案，再进导航 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_window"
+    android:orientation="vertical">
+
+    <!-- 顶栏 -->
+    <LinearLayout
+        android:id="@+id/rs_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp">
+
+        <ImageView
+            android:id="@+id/rs_btn_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_navi_circle"
+            android:contentDescription="@string/cancel"
+            android:padding="11dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/text_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/inter"
+            android:text="@string/route_select_title"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- 目的地 + 路线偏好入口 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:id="@+id/rs_dest_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/inter"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/rs_dest_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/inter"
+            android:maxLines="1"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/rs_pref_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter"
+                android:text="@string/route_prefs"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/rs_pref_value"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip"
+                android:ellipsize="end"
+                android:fontFamily="@font/inter"
+                android:maxLines="1"
+                android:paddingStart="10dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="5dp"
+                android:textColor="@color/accent"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/route_select_pick"
+        android:textColor="@color/text_tertiary"
+        android:textSize="12sp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rs_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp" />
+
+    <ProgressBar
+        android:id="@+id/rs_loading"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="12dp"
+        android:indeterminateTint="@color/accent"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/rs_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:text="@string/route_select_empty"
+        android:textColor="@color/text_tertiary"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <!-- 次级操作：把目的地交给第三方地图 App -->
+    <TextView
+        android:id="@+id/rs_other_map"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_chip"
+        android:gravity="center"
+        android:minHeight="44dp"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp"
+        android:text="@string/route_select_other_map"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <Button
+        android:id="@+id/rs_start"
+        style="@style/Widget.Moto.Button.Accent"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/route_select_start"
+        android:textSize="16sp" />
+</LinearLayout>

@@ -11,7 +11,7 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.motohud.ble.ui.common.MotoDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
@@ -133,7 +133,7 @@ class KeySetupDialog : DialogFragment() {
 
         root.addView(et)
 
-        return AlertDialog.Builder(ctx)
+        return MotoDialog.builder(ctx)
             .setTitle(R.string.amap_key_title)
             .setView(root)
             .setNegativeButton(R.string.cancel, null)

@@ -11,9 +11,13 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import com.motohud.ble.ui.common.MotoDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -88,11 +92,9 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             pager.currentItem = when (item.itemId) {
                 R.id.nav_garage -> TAB_GARAGE
-                R.id.nav_dashboard -> TAB_DASHBOARD
                 R.id.nav_navigation -> TAB_NAVIGATION
-                R.id.nav_examination -> TAB_EXAMINATION
-                R.id.nav_command -> TAB_COMMAND
-                R.id.nav_scan -> TAB_SCAN
+                R.id.nav_vehicle -> TAB_VEHICLE
+                R.id.nav_scan -> TAB_CONNECT
                 else -> TAB_GARAGE
             }
             true
@@ -101,15 +103,15 @@ class MainActivity : AppCompatActivity() {
             override fun onPageSelected(position: Int) {
                 bottomNav.selectedItemId = when (position) {
                     TAB_GARAGE -> R.id.nav_garage
-                    TAB_DASHBOARD -> R.id.nav_dashboard
                     TAB_NAVIGATION -> R.id.nav_navigation
-                    TAB_EXAMINATION -> R.id.nav_examination
-                    TAB_COMMAND -> R.id.nav_command
+                    TAB_VEHICLE -> R.id.nav_vehicle
                     else -> R.id.nav_scan
                 }
+                onTabShown(position)
             }
         })
 
+        applyEdgeToEdge()
         setupConnectionBanner()
         requestBlePermissions()
 
@@ -130,14 +132,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         banner.setOnClickListener {
-            if (ble.state.value == BleConnectionManager.State.CONNECTED) showSettings() else goToTab(TAB_SCAN)
+            if (ble.state.value == BleConnectionManager.State.CONNECTED) showSettings() else goToTab(TAB_CONNECT)
         }
         banner.setOnLongClickListener {
             showSettings()
             true
         }
         bannerAction.setOnClickListener {
-            if (ble.state.value == BleConnectionManager.State.CONNECTED) showSettings() else goToTab(TAB_SCAN)
+            if (ble.state.value == BleConnectionManager.State.CONNECTED) showSettings() else goToTab(TAB_CONNECT)
         }
     }
 
@@ -169,10 +171,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 边到边适配。
+     *
+     * targetSdk 35+ 在 Android 15 上强制 edge-to-edge，内容会画到状态栏下面，
+     * 表现就是"顶部界面被状态栏压住 / 时间电量叠在标题上"。
+     * 这里主动关掉系统自动避让，再自己按 insets 给状态条与底部导航留白，
+     * 这样刘海屏、挖孔屏、手势条的数值都能自适应。
+     */
+    private fun applyEdgeToEdge() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val density = resources.displayMetrics.density
+        val baseTop = (6 * density).toInt()
+        val baseBottom = (6 * density).toInt()
+
+        ViewCompat.setOnApplyWindowInsetsListener(banner) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(top = bars.top + baseTop)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(bottom = bars.bottom + baseBottom)
+            insets
+        }
+    }
+
     /** 切页（供各页空态"去连接"与状态条复用） */
     fun goToTab(index: Int) {
         if (!::pager.isInitialized) return
-        pager.setCurrentItem(index.coerceIn(0, 5), true)
+        pager.setCurrentItem(index.coerceIn(0, TAB_COUNT - 1), true)
+    }
+
+    /** 跳到车况页的指定子页：0=仪表 1=体检 2=指令 */
+    fun goToVehicle(subPage: Int) {
+        goToTab(TAB_VEHICLE)
+        pager.post {
+            supportFragmentManager.fragments
+                .filterIsInstance<com.motohud.ble.ui.vehicle.VehicleFragment>()
+                .firstOrNull()
+                ?.selectPage(subPage)
+        }
+    }
+
+    /**
+     * 页面可见时通知对应页做一次刷新。
+     * 导航页最需要：切过去时定位可能已经过期，必须主动重新取一次，
+     * 否则会一直显示很久以前的位置。
+     */
+    private fun onTabShown(position: Int) {
+        if (position != TAB_NAVIGATION) return
+        supportFragmentManager.fragments.forEach { f ->
+            (f as? com.motohud.ble.ui.navi.NavigationFragment)?.onTabShown()
+        }
     }
 
     /** 高德 Key 变更后通知导航页重建地图（页面可能已创建但处于降级态） */
@@ -184,21 +235,26 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- 设置 ----------
 
-    private fun showSettings() {
+    /** 设置入口：顶部状态条、爱车页「设置」宫格共用同一个对话框 */
+    fun showSettings() {
         val items = arrayOf(
             getString(R.string.settings_onboarding),
             getString(R.string.settings_amap_key),
             getString(R.string.settings_privacy),
+            getString(R.string.navi_history_entry),
             getString(R.string.settings_about)
         )
-        AlertDialog.Builder(this)
+        MotoDialog.builder(this)
             .setTitle(R.string.settings_title)
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> OnboardingActivity.start(this)
                     1 -> KeySetupDialog().show(supportFragmentManager, "key_setup")
                     2 -> showPrivacy()
-                    3 -> showAbout()
+                    3 -> com.motohud.ble.ui.navi.NaviHistoryActivity.start(this)
+                    4 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
+                        startActivity(Intent(this, it))
+                    }
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -206,24 +262,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPrivacy() {
-        AlertDialog.Builder(this)
+        MotoDialog.builder(this)
             .setTitle(R.string.onboarding_privacy_title)
             .setMessage(R.string.onboarding_privacy_body)
             .setPositiveButton(R.string.setting) { _, _ -> /* 已同意，无需操作 */ }
-            .show()
-    }
-
-    private fun showAbout() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.settings_about)
-            .setMessage(
-                getString(
-                    R.string.about_body,
-                    BuildConfig.VERSION_NAME,
-                    BuildConfig.VERSION_CODE
-                )
-            )
-            .setPositiveButton(R.string.cancel, null)
             .show()
     }
 
@@ -248,7 +290,7 @@ class MainActivity : AppCompatActivity() {
 
     /** 引导用户授予通知访问权限（复刻 BaseActivity.openNotifyController 引导） */
     fun promptNotificationAccess() {
-        AlertDialog.Builder(this)
+        MotoDialog.builder(this)
             .setTitle(R.string.notify_title)
             .setMessage(R.string.notify_message)
             .setNegativeButton(R.string.cancel, null)
@@ -279,10 +321,14 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val TAB_GARAGE = 0
-        const val TAB_DASHBOARD = 1
-        const val TAB_EXAMINATION = 2
-        const val TAB_NAVIGATION = 3
-        const val TAB_COMMAND = 4
-        const val TAB_SCAN = 5
+        const val TAB_NAVIGATION = 1
+        const val TAB_VEHICLE = 2
+        const val TAB_CONNECT = 3
+        const val TAB_COUNT = 4
+
+        /** 车况页子页 */
+        const val VEHICLE_DASHBOARD = 0
+        const val VEHICLE_EXAMINATION = 1
+        const val VEHICLE_COMMAND = 2
     }
 }

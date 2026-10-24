@@ -13,7 +13,11 @@
         tools:targetApi="31" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:targetApi="31" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 检查更新与下载安装包 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- 高德地图 / 搜索 / 定位 SDK -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -107,5 +111,43 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- 导航前台服务：息屏导航时保持定位与 BLE 转发 -->
+        <service
+            android:name=".service.NaviForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:label="@string/navi_fg_channel" />
+
+        <!-- 路线选择页：先看方案再导航 -->
+        <activity
+            android:name=".ui.navi.RouteSelectActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MotoHeadUnit" />
+
+        <!-- 关于页：版本、更新、车机信息 -->
+        <activity
+            android:name=".ui.about.AboutActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MotoHeadUnit" />
+
+        <!-- 导航历史：按时间范围查看过往导航记录 -->
+        <activity
+            android:name=".ui.navi.NaviHistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MotoHeadUnit" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

@@ -24,8 +24,90 @@
         <item name="android:textColorHint">@color/text_tertiary</item>
         <item name="android:editTextColor">@color/text_primary</item>
         <item name="android:textColorHighlight">@color/accent_dim</item>
+        <!-- 全局弹窗统一外观（圆角 + 描边），所有 MaterialAlertDialogBuilder 自动继承。
+             注意：这里只能设 materialAlertDialogTheme（它是 ThemeOverlay 类型）；
+             alertDialogTheme 要求完整 Dialog 主题，指过去会在 inflate
+             m3_alert_dialog 时因缺少布局属性直接崩。 -->
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Moto.Dialog</item>
+        <item name="android:colorBackgroundFloating">@color/surface_high</item>
         <!-- 转场动画 -->
         <item name="android:windowAnimationStyle">@style/Animation.MotoActivity</item>
+    </style>
+
+    <!-- ===================== 弹窗 ===================== -->
+
+    <!--
+      统一弹窗外观。
+      Material3 的 AlertDialog 背景是一个 MaterialShapeDrawable，圆角与描边走
+      shapeAppearanceOverlay + colorOutline，比塞一个 android:background 可靠
+      （后者会被 builder 内部重设，导致"有的弹窗有边框、有的没有"）。
+    -->
+    <style name="ThemeOverlay.Moto.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <!--
+          这里必须是完全不透明的 dialog_surface。
+          原先是 surface_high(#F21C1C1E)，那是配纯黑窗口的玻璃卡片色，
+          一旦弹窗浮在地图/图片上，背景就会透出来（设置弹窗能看见摩托车）。
+          主题层统一兜底，任何没走 MotoDialog.builder 的弹窗也不会再透。
+        -->
+        <item name="colorSurface">@color/dialog_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/card_stroke</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.Moto.Dialog</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Moto.Dialog.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Moto.Dialog.Body</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Moto.Dialog.Button</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Moto.Dialog.Button</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.Moto.Dialog.Button</item>
+    </style>
+
+    <style name="ShapeAppearance.Moto.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">22dp</item>
+    </style>
+
+    <!--
+      坑：m3_alert_dialog_title.xml 里的标题 View 是这样写的——
+        <androidx.appcompat.widget.DialogTitle android:id="@+id/alertTitle"
+            style="?attr/materialAlertDialogTitleTextStyle"/>
+      它自身没有任何 android:layout_width/height，宽高完全由这个样式提供。
+      所以 parent 必须是 MaterialAlertDialog.*.Title.Text 系列（它的祖先
+      Base.MaterialAlertDialog.MaterialComponents.Title.Text 里写了
+      layout_width=match_parent / layout_height=wrap_content）。
+      如果 parent 换成纯 TextAppearance.*，layout 属性就丢了，
+      父 LinearLayout 建 LayoutParams 时直接抛
+      UnsupportedOperationException: You must supply a layout_width attribute，
+      表现为「点管理地址必闪退」。
+      这里显式再写一次宽高，双保险，避免以后换 parent 又踩回去。
+    -->
+    <style name="TextAppearance.Moto.Dialog.Title" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_gravity">start|center_vertical</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="TextAppearance.Moto.Dialog.Body" parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+    </style>
+
+    <style name="Widget.Moto.Dialog.Button" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textColor">@color/accent</item>
     </style>
 
     <!-- Activity 转场（干脆的入场滑屏） -->
@@ -39,6 +121,11 @@
     <!-- 对话框动画 -->
     <style name="Theme.MotoDialog" parent="Theme.MotoHeadUnit">
         <item name="android:windowAnimationStyle">@style/Animation.MotoDialog</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowMinWidthMajor">82%</item>
+        <item name="android:windowMinWidthMinor">88%</item>
+        <item name="android:backgroundDimAmount">0.55</item>
     </style>
 
     <style name="Animation.MotoDialog" parent="@android:style/Animation.Dialog">
@@ -105,11 +192,16 @@
         <item name="android:letterSpacing">0</item>
         <item name="android:fontFamily">@font/inter</item>
         <item name="android:minHeight">48dp</item>
-        <item name="android:layout_marginTop">8dp</item>
         <item name="android:stateListAnimator">@null</item>
         <item name="android:elevation">0dp</item>
         <item name="rippleColor">@color/accent_dim</item>
         <item name="backgroundTint">@null</item>
+        <!--
+          这里原本有一条 android:layout_marginTop=8dp。
+          样式里的 layout_* 会被解析成按钮自身的外边距，导致同一行里
+          「投屏到车机」比「停止导航」低 8dp —— 就是那个"没有水平对齐"。
+          布局属性一律写在 layout 里，样式只描述外观。
+        -->
     </style>
 
     <!-- 幽灵按钮（描边） -->

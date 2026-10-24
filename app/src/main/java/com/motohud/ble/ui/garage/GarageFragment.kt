@@ -56,16 +56,14 @@ class GarageFragment : Fragment(R.layout.fragment_garage) {
 
         binding.btnChangeBike.setOnClickListener { showPicker() }
         binding.hero.setOnClickListener { showPicker() }
-        binding.btnConnect.setOnClickListener { goTab(MainActivity.TAB_SCAN) }
 
-        binding.tileDashboard.setOnClickListener { goTab(MainActivity.TAB_DASHBOARD) }
-        binding.tileExamination.setOnClickListener { goTab(MainActivity.TAB_EXAMINATION) }
-        binding.tileCommand.setOnClickListener { goTab(MainActivity.TAB_COMMAND) }
-        binding.tileNavigation.setOnClickListener { goTab(MainActivity.TAB_NAVIGATION) }
-        binding.tileConnect.setOnClickListener { goTab(MainActivity.TAB_SCAN) }
+        // 只保留底部 Tab 里没有的入口；仪表/体检/指令/导航/连接 都在底部，不再重复放这里
         binding.tileSearch.setOnClickListener {
             // 标题留空：检索页自身有标题，避免顶部重复
             HostActivity.start(requireContext(), "", HostActivity.PAGE_SEARCH)
+        }
+        binding.tileSettings.setOnClickListener {
+            (requireActivity() as? MainActivity)?.showSettings()
         }
 
         observeBike()
@@ -179,7 +177,6 @@ class GarageFragment : Fragment(R.layout.fragment_garage) {
         binding.tvStatus.setText(
             if (connected) R.string.garage_status_connected else R.string.status_disconnected
         )
-        binding.connectHint.visibility = if (connected) View.GONE else View.VISIBLE
     }
 
     /** 首次连接车机时按设备名猜一次车型 */
@@ -210,10 +207,6 @@ class GarageFragment : Fragment(R.layout.fragment_garage) {
     }
 
     // ---------- 工具 ----------
-
-    private fun goTab(index: Int) {
-        (requireActivity() as? MainActivity)?.goToTab(index)
-    }
 
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()

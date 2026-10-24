@@ -10,6 +10,12 @@
     <color name="fill_strong">#52787880</color>
     <color name="hairline">#1AFFFFFF</color>
 
+    <!-- 弹窗专用表面色：必须完全不透明。
+         surface_high(#F21C1C1E) 带 alpha，是为叠加在纯黑窗口上的玻璃卡片设计的，
+         拿去做弹窗填充会透出背后的地图/列表，看起来像"弹窗是半透明的 bug"。 -->
+    <color name="dialog_surface">#FF1F1F22</color>
+    <color name="dialog_stroke">#33FFFFFF</color>
+
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#99EBEBF5</color>
     <color name="text_tertiary">#4DEBEBF5</color>

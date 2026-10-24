@@ -73,8 +73,11 @@ class MainViewModel(app: MotoHudApp) : ViewModel() {
                         if (event.state == BleConnectionManager.State.DISCONNECTED) {
                             _telemetry.value = Telemetry()
                             _examination.value = Examination()
+                            // 断开后旧读数不应被记进下一条导航历史
+                            com.motohud.ble.data.BikeSnapshot.clear()
                         }
                         if (event.state == BleConnectionManager.State.CONNECTED) {
+                            com.motohud.ble.data.BikeSnapshot.deviceName = ble.connectedDeviceName
                             sendHello()
                         }
                     }
@@ -106,18 +109,27 @@ class MainViewModel(app: MotoHudApp) : ViewModel() {
                 fuel = frame.instantaneousFuel
             )
 
-            is BleProtocol.Frame.CmdC -> _telemetry.value = _telemetry.value.copy(
-                waterTemp = frame.waterTemperature,
-                roomTemp = frame.roomTemperature,
-                oil = frame.oilQuantity,
-                battery = frame.batteryVoltage
-            )
+            is BleProtocol.Frame.CmdC -> {
+                _telemetry.value = _telemetry.value.copy(
+                    waterTemp = frame.waterTemperature,
+                    roomTemp = frame.roomTemperature,
+                    oil = frame.oilQuantity,
+                    battery = frame.batteryVoltage
+                )
+                // 同步给全局快照，导航历史结束时才能记下"当时的车况"
+                com.motohud.ble.data.BikeSnapshot.waterTemp = frame.waterTemperature
+                com.motohud.ble.data.BikeSnapshot.oil = frame.oilQuantity
+                com.motohud.ble.data.BikeSnapshot.battery = frame.batteryVoltage
+            }
 
-            is BleProtocol.Frame.CmdD -> _telemetry.value = _telemetry.value.copy(
-                totalMileage = frame.totalMileage,
-                maxSpeed = frame.maxSpeed,
-                avgSpeed = frame.averageSpeed
-            )
+            is BleProtocol.Frame.CmdD -> {
+                _telemetry.value = _telemetry.value.copy(
+                    totalMileage = frame.totalMileage,
+                    maxSpeed = frame.maxSpeed,
+                    avgSpeed = frame.averageSpeed
+                )
+                com.motohud.ble.data.BikeSnapshot.mileage = frame.totalMileage
+            }
 
             is BleProtocol.Frame.CmdE -> {
                 val fault = FaultRepository.byIndex(BleConstants.CMD_E, frame.malfunctionIndex)

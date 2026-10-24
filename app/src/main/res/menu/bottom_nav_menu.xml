@@ -1,25 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  底部导航（4 项）
+  原先 6 项里有三个页签互相重复：仪表 / 体检 / 指令 都是"看车 + 发指令"，
+  与爱车页宫格入口重叠。现在合并成一个「车况」页（内部三个子页），
+  底部只留：爱车（首页）、导航、车况、连接。
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_garage"
         android:icon="@drawable/ic_nav_garage"
         android:title="@string/nav_garage" />
     <item
-        android:id="@+id/nav_dashboard"
-        android:icon="@drawable/ic_nav_dashboard"
-        android:title="@string/nav_dashboard" />
-    <item
-        android:id="@+id/nav_examination"
-        android:icon="@drawable/ic_nav_examination"
-        android:title="@string/nav_examination" />
-    <item
         android:id="@+id/nav_navigation"
         android:icon="@drawable/ic_nav_navigation"
         android:title="@string/nav_navigation" />
     <item
-        android:id="@+id/nav_command"
-        android:icon="@drawable/ic_nav_command"
-        android:title="@string/nav_command" />
+        android:id="@+id/nav_vehicle"
+        android:icon="@drawable/ic_nav_vehicle"
+        android:title="@string/nav_vehicle" />
     <item
         android:id="@+id/nav_scan"
         android:icon="@drawable/ic_nav_scan"

@@ -10,7 +10,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import com.motohud.ble.ui.common.MotoDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -94,7 +94,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan) {
         val lm = requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val gpsOn = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
         if (!gpsOn && android.os.Build.VERSION.SDK_INT >= 23) {
-            AlertDialog.Builder(requireContext())
+            MotoDialog.builder(requireContext())
                 .setTitle(R.string.notify_title)
                 .setMessage(R.string.gps_notify_msg)
                 .setNegativeButton(R.string.cancel) { _, _ -> requireActivity().finish() }

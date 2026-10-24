@@ -226,48 +226,13 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 未连接提示条 -->
-        <LinearLayout
-            android:id="@+id/connect_hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_metric"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="14dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="10dp">
+        <!--
+          原「未连接提示条 + 去连接」在这里删除。
+          连接入口全应用只保留一处：底部「连接」页（外加顶部状态条的引导）。
+          同一屏出现两个「去连接」，用户不知道该点哪个。
+        -->
 
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@string/status_disconnected"
-                android:src="@drawable/ic_bluetooth"
-                app:tint="@color/accent" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/garage_connect_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/btn_connect"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:text="@string/empty_action"
-                android:textColor="@color/accent"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- ================= 功能宫格 ================= -->
+        <!-- ================= 快捷入口 ================= -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -278,84 +243,19 @@
             android:textSize="15sp"
             android:textStyle="bold" />
 
+        <!--
+          这里原先有 6 个宫格：仪表 / 体检 / 指令 / 导航 / 检索 / 连接。
+          前 5 个都能从底部 Tab 直达（车况页内含仪表·体检·指令），属于重复入口，
+          一并去掉；只留下底部没有的「附近检索」与「设置」。
+        -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-
-            <LinearLayout
-                android:id="@+id/tile_dashboard"
-                style="@style/Garage.Tile">
-
-                <ImageView
-                    style="@style/Garage.Tile.Icon"
-                    android:contentDescription="@string/nav_dashboard"
-                    android:src="@drawable/ic_nav_dashboard"
-                    app:tint="@color/accent" />
-
-                <TextView
-                    style="@style/Garage.Tile.Label"
-                    android:text="@string/nav_dashboard" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/tile_examination"
-                style="@style/Garage.Tile"
-                android:layout_marginStart="8dp">
-
-                <ImageView
-                    style="@style/Garage.Tile.Icon"
-                    android:contentDescription="@string/nav_examination"
-                    android:src="@drawable/ic_nav_examination"
-                    app:tint="@color/accent" />
-
-                <TextView
-                    style="@style/Garage.Tile.Label"
-                    android:text="@string/nav_examination" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/tile_command"
-                style="@style/Garage.Tile"
-                android:layout_marginStart="8dp">
-
-                <ImageView
-                    style="@style/Garage.Tile.Icon"
-                    android:contentDescription="@string/nav_command"
-                    android:src="@drawable/ic_nav_command"
-                    app:tint="@color/accent" />
-
-                <TextView
-                    style="@style/Garage.Tile.Label"
-                    android:text="@string/nav_command" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:id="@+id/tile_navigation"
-                style="@style/Garage.Tile">
-
-                <ImageView
-                    style="@style/Garage.Tile.Icon"
-                    android:contentDescription="@string/nav_navigation"
-                    android:src="@drawable/ic_nav_navigation"
-                    app:tint="@color/accent" />
-
-                <TextView
-                    style="@style/Garage.Tile.Label"
-                    android:text="@string/nav_navigation" />
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/tile_search"
-                style="@style/Garage.Tile"
-                android:layout_marginStart="8dp">
+                style="@style/Garage.Tile">
 
                 <ImageView
                     style="@style/Garage.Tile.Icon"
@@ -369,19 +269,19 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/tile_connect"
+                android:id="@+id/tile_settings"
                 style="@style/Garage.Tile"
                 android:layout_marginStart="8dp">
 
                 <ImageView
                     style="@style/Garage.Tile.Icon"
-                    android:contentDescription="@string/nav_scan"
-                    android:src="@drawable/ic_nav_scan"
+                    android:contentDescription="@string/settings_title"
+                    android:src="@drawable/ic_settings"
                     app:tint="@color/accent" />
 
                 <TextView
                     style="@style/Garage.Tile.Label"
-                    android:text="@string/nav_scan" />
+                    android:text="@string/settings_title" />
             </LinearLayout>
         </LinearLayout>
 

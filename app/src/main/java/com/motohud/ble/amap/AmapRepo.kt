@@ -26,6 +26,10 @@ data class TipItem(
 /** 路线规划结果 */
 sealed class RoutePlanResult {
     data class Success(val route: RouteData) : RoutePlanResult()
+
+    /** 多方案（路线选择页用） */
+    data class Many(val routes: List<RouteData>) : RoutePlanResult()
+
     data class Failure(val message: String) : RoutePlanResult()
 }
 
@@ -59,7 +63,7 @@ class AmapRepo(private val context: Context) {
                     if (rCode == 1000) {
                         cont.resume(TipsResult.Ok(tips.orEmpty().mapNotNull { it.toItem() }))
                     } else {
-                        // 10001 INVALID_USER_KEY / 10009 未开通服务 等，需要用户检查 Key
+                        // 10001 INVALID_USER_KEY / 10009 未开通服务 等
                         cont.resume(TipsResult.Err(rCode))
                     }
                 }
@@ -71,9 +75,9 @@ class AmapRepo(private val context: Context) {
     }
 
     /**
-     * 驾车路线规划。
+     * 单条路线规划（第一条）。
      *
-     * @param strategy 高德驾车策略（`RouteSearch.Driving*` 常量）
+     * @param strategy 高德驾车策略（`RouteSearch.Driving*` / `DRIVING_MULTI_*` 常量）
      * @param modeLabel 写进结果的模式描述，供界面显示
      */
     suspend fun planDriveRoute(
@@ -84,6 +88,50 @@ class AmapRepo(private val context: Context) {
         strategy: Int = RouteSearch.DrivingDefault,
         modeLabel: String = ""
     ): RoutePlanResult {
+        val paths = requestPaths(fromLat, fromLng, toLat, toLng, strategy)
+        return when {
+            paths.first != 1000 -> RoutePlanResult.Failure(errorText(paths.first))
+            paths.second.isEmpty() -> RoutePlanResult.Failure(errorText(1000))
+            else -> RoutePlanResult.Success(paths.second.first().toRouteData(modeLabel))
+        }
+    }
+
+    /**
+     * 多方案路线规划 —— 「先选路线，再导航」的数据来源。
+     *
+     * 用 `DRIVING_MULTI_CHOICE_*` 策略请求，高德会一次返回 2~3 套方案
+     * （速度最快 / 距离最短 / 费用最低 …），这里全部转成 [RouteData]，
+     * 由路线选择页展示给用户挑。
+     *
+     * @param limit 最多返回几条
+     */
+    suspend fun planCandidates(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        strategy: Int = RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST_AVOID_CONGESTION,
+        modeLabel: String = "",
+        limit: Int = 3
+    ): RoutePlanResult {
+        val paths = requestPaths(fromLat, fromLng, toLat, toLng, strategy)
+        if (paths.first != 1000) return RoutePlanResult.Failure(errorText(paths.first))
+        val list = paths.second
+        if (list.isEmpty()) return RoutePlanResult.Failure(errorText(1000))
+        val routes = list.take(limit).mapIndexed { index, p ->
+            p.toRouteData(modeLabel, fallbackLabel = if (index == 0) "推荐" else "方案 ${index + 1}")
+        }
+        return if (routes.size == 1) RoutePlanResult.Many(routes) else RoutePlanResult.Many(routes)
+    }
+
+    /** 发起一次驾车算路，返回 (rCode, paths) */
+    private suspend fun requestPaths(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        strategy: Int
+    ): Pair<Int, List<DrivePath>> {
         return suspendCancellableCoroutine { cont ->
             try {
                 val routeSearch = RouteSearch(context)
@@ -91,31 +139,13 @@ class AmapRepo(private val context: Context) {
                     LatLonPoint(fromLat, fromLng),
                     LatLonPoint(toLat, toLng)
                 )
-                val query = RouteSearch.DriveRouteQuery(
-                    fromAndTo,
-                    strategy,
-                    null,
-                    null,
-                    ""
-                )
+                val query = RouteSearch.DriveRouteQuery(fromAndTo, strategy, null, null, "")
                 routeSearch.setRouteSearchListener(object : RouteSearch.OnRouteSearchListener {
-                    override fun onDriveRouteSearched(result: com.amap.api.services.route.DriveRouteResult?, rCode: Int) {
-                        val path: DrivePath? = result?.paths?.firstOrNull()
-                        if (rCode == 1000 && path != null) {
-                            cont.resume(RoutePlanResult.Success(path.toRouteData(modeLabel)))
-                        } else {
-                            cont.resume(
-                                RoutePlanResult.Failure(
-                                    when (rCode) {
-                                        1002 -> "网络异常，请检查网络后重试"
-                                        1003 -> "搜索服务返回异常，请稍后重试"
-                                        1804 -> "起点与终点距离过近"
-                                        1806 -> "起点或终点不在可行区域"
-                                        else -> "路线规划失败（错误码 $rCode）"
-                                    }
-                                )
-                            )
-                        }
+                    override fun onDriveRouteSearched(
+                        result: com.amap.api.services.route.DriveRouteResult?,
+                        rCode: Int
+                    ) {
+                        cont.resume(rCode to result?.paths.orEmpty())
                     }
 
                     override fun onBusRouteSearched(
@@ -135,33 +165,19 @@ class AmapRepo(private val context: Context) {
                 })
                 routeSearch.calculateDriveRouteAsyn(query)
             } catch (e: Exception) {
-                cont.resume(RoutePlanResult.Failure(e.message ?: "路线规划异常"))
+                cont.resumeWithException(e)
             }
         }
     }
 
-    /**
-     * 摩托车可达路网近似算路。
-     *
-     * 高德搜索 SDK 没有摩托车策略（官方摩托算路只在收费的导航 SDK 里），
-     * 这里用「躲避拥堵 + 不走快速路」的驾车策略来近似：国内禁摩/限行主要针对
-     * 快速路、高架、隧道与城市主干道，绕开快速路能规避掉大部分硬禁区。
-     */
-    suspend fun planMotorcycleRoute(
-        fromLat: Double,
-        fromLng: Double,
-        toLat: Double,
-        toLng: Double,
-        avoidHighway: Boolean = true
-    ): RoutePlanResult {
-        val strategy = if (avoidHighway) {
-            // 不走高速 + 躲避拥堵 + 避免收费：最贴近摩托车可达路网
-            RouteSearch.DrivingNoHighAvoidCongestionSaveMoney
-        } else {
-            RouteSearch.DrivingAvoidCongestion
-        }
-        val label = if (avoidHighway) "摩托车 · 避开高速/快速路" else "摩托车 · 避开拥堵"
-        return planDriveRoute(fromLat, fromLng, toLat, toLng, strategy, label)
+    /** 把错误码翻译成用户能看懂的话，不暴露内部编号 */
+    private fun errorText(code: Int): String = when (code) {
+        1002 -> "网络异常，请检查网络后重试"
+        1003 -> "路线服务暂时不可用，请稍后重试"
+        1804 -> "起点与终点距离过近"
+        1806 -> "起点或终点不在可规划区域内"
+        1000 -> "未能规划出可用路线，请换个目的地试试"
+        else -> "路线规划失败，请稍后重试"
     }
 
     // ---------- 转换 ----------
@@ -176,13 +192,20 @@ class AmapRepo(private val context: Context) {
         )
     }
 
-    private fun DrivePath.toRouteData(modeLabel: String = ""): RouteData {
+    private fun DrivePath.toRouteData(
+        modeLabel: String = "",
+        fallbackLabel: String = ""
+    ): RouteData {
         val steps = this.steps.orEmpty().map { it.toRouteStep() }
+        val label = strategy?.takeIf { it.isNotBlank() } ?: fallbackLabel
         return RouteData(
             distanceM = distance,
             durationS = duration.toFloat(),
             steps = steps,
-            modeLabel = modeLabel
+            modeLabel = modeLabel,
+            label = label,
+            tolls = tolls,
+            trafficLights = totalTrafficlights
         )
     }
 

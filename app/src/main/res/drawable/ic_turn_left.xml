@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 左转：竖杆上行 → 圆角左折 → 箭头指向左 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- 左转箭头（向上后向左） -->
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M18,4v3h-3.5c-1.4,0 -2.5,1.1 -2.5,2.5v5.5H8l4,4l4,-4h-4V9.5c0,-0.3 0.2,-0.5 0.5,-0.5H18v3l5,-4L18,4z" />
+        android:pathData="M14.6,21 L14.6,11.4 Q14.6,8.2 11.4,8.2 L6.4,8.2"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M10.8,3.4 L5.1,8.2 L10.8,13"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

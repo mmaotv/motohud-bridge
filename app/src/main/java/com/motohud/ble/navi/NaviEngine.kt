@@ -122,8 +122,14 @@ data class RouteData(
     val distanceM: Float,
     val durationS: Float,
     val steps: List<RouteStep>,
-    /** 规划模式描述，如「摩托车 · 不走快速路」 */
-    val modeLabel: String = ""
+    /** 规划模式描述，如「不走高速·避拥堵」 */
+    val modeLabel: String = "",
+    /** 高德返回的方案名，如「速度最快」；界面上的候选路线标题 */
+    val label: String = "",
+    /** 过路费（元） */
+    val tolls: Float = 0f,
+    /** 红绿灯数量 */
+    val trafficLights: Int = 0
 )
 
 /** 高德 IconType 常用值（com.amap.api.navi.enums.IconType） */
@@ -197,6 +203,9 @@ class RouteNaviEngine(
     private var stepEndDist: List<Double> = emptyList()   // 每步结束时的累计距离
     private var steps: List<RouteStep> = emptyList()
     private var totalDist = 0.0
+
+    /** 高德返回的这条路线规划总时长（秒），用于推算剩余时间 */
+    private var routeDurationS = 0f
     private var lastIndex = 0
 
     /** 最近一次使用的规划路线（HUD/导航页共享引擎时用于重绘） */
@@ -310,6 +319,10 @@ class RouteNaviEngine(
         // 用起点给滤波器打底：第一帧定位也要过跳点校验，
         // 否则冷启动时一帧网络定位就能把车标甩走几百公里。
         filter.seed(sLat, sLng, System.currentTimeMillis())
+
+        // 记住高德给的规划总时长，ETA 按剩余里程等比推算。
+        // 车机常拿不到 GPS 速度，以前用 5km/h 兜底，11 公里会算成"2 小时 17 分"。
+        routeDurationS = route?.durationS?.takeIf { it > 30f } ?: 0f
 
         if (route != null && route.steps.isNotEmpty() &&
             route.steps.any { it.polyline.size >= 2 }
@@ -679,8 +692,19 @@ class RouteNaviEngine(
         }
     }
 
+    /**
+     * 剩余时间。
+     *
+     * 优先按「规划总时长 × 剩余里程占比」推算 —— 高德的时长已经包含红绿灯、限速与
+     * 拥堵，比用瞬时车速外推稳得多。只有在没有规划时长时，才退化成按车速估算，
+     * 且兜底速度取 20km/h（原先 5km/h 会把 11 公里算成 2 小时 17 分）。
+     */
     private fun etaSeconds(distM: Double): Int {
-        val v = _state.value.speedKmh.coerceAtLeast(5f)
+        if (routeDurationS > 30f && totalDist > 1.0) {
+            val ratio = (distM / totalDist).coerceIn(0.0, 1.0)
+            return (routeDurationS * ratio).toInt()
+        }
+        val v = _state.value.speedKmh.coerceAtLeast(20f)
         return (distM / (v * 1000 / 3600)).toInt()
     }
 

@@ -8,12 +8,15 @@
     <LinearLayout
         android:id="@+id/banner_connection"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="wrap_content"
         android:background="@drawable/bg_banner"
         android:gravity="center_vertical"
+        android:minHeight="44dp"
         android:orientation="horizontal"
         android:paddingStart="16dp"
+        android:paddingTop="10dp"
         android:paddingEnd="8dp"
+        android:paddingBottom="10dp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent">
 

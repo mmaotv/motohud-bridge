@@ -1,7 +1,6 @@
 package com.motohud.ble.ui.navi
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -29,13 +28,18 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
+import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.LatLng
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.amap.api.maps.model.Marker
+import com.amap.api.maps.model.MarkerOptions
+import com.motohud.ble.ui.common.MotoDialog
 import com.motohud.ble.MotoHudApp
 import com.motohud.ble.R
 import com.motohud.ble.amap.AmapManager
 import com.motohud.ble.data.SavedPlaceEntity
 import com.motohud.ble.ble.BleConnectionManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -55,6 +59,9 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
 
     private var mapView: com.amap.api.maps.MapView? = null
     private var aMap: AMap? = null
+
+    /** 屏幕中间的当前位置点 */
+    private var meMarker: Marker? = null
     private lateinit var tipAdapter: TipAdapter
 
     private lateinit var etSearch: EditText
@@ -143,15 +150,14 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         btnClear.setOnClickListener { etSearch.setText("") }
 
         // ---------- 底部操作 ----------
-        view.findViewById<View>(R.id.btn_refresh_location).setOnClickListener {
-            ensureLocationPermission()
-            vm.refreshLocation()
-        }
+        // 两个定位入口（文字「更新刷新定位」与浮动圆钮）走同一个方法：
+        // 都强制向定位 SDK 要一次新鲜位置，再移动地图。
+        view.findViewById<View>(R.id.btn_refresh_location).setOnClickListener { locateNow() }
         view.findViewById<View>(R.id.btn_manage_places).setOnClickListener { showManagePlaces() }
+        view.findViewById<View>(R.id.btn_route_prefs).setOnClickListener { showRoutePrefs() }
         view.findViewById<View>(R.id.btn_manual_dest).setOnClickListener { showManualDestDialog() }
-        view.findViewById<View>(R.id.btn_map_choice).setOnClickListener { showMapChoice() }
         view.findViewById<View>(R.id.btn_setup_key).setOnClickListener { showKeySetup() }
-        fabLocation.setOnClickListener { moveToMyLocation() }
+        fabLocation.setOnClickListener { locateNow() }
 
         // ---------- 状态观察 ----------
         viewLifecycleOwner.lifecycleScope.launch {
@@ -203,6 +209,17 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
                     }
                 }
                 launch {
+                    // 当前位置点：跟着定位流走，屏幕中间那个蓝点
+                    vm.locationFlow.collect { fix ->
+                        if (fix != null) updateMeMarker(fix.lat, fix.lng, fix.accuracy)
+                    }
+                }
+                launch {
+                    vm.locating.collect { busy ->
+                        if (busy) tvLocation.setText(R.string.navi_locating)
+                    }
+                }
+                launch {
                     (requireActivity().application as MotoHudApp).bleManager.state.collect { state ->
                         val connected = state == BleConnectionManager.State.CONNECTED
                         tvBleHint.visibility = if (connected) View.GONE else View.VISIBLE
@@ -235,14 +252,22 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
                     isRotateGesturesEnabled = true
                 }
                 runCatching { setTrafficEnabled(true) }
-                enableMyLocation()
             }
+            // 权限检查放到地图准备好之后：没权限时 SDK 初始化会抛异常
+            enableMyLocation()
             moveToMyLocation()
         } catch (e: Exception) {
             Toast.makeText(requireContext(), R.string.navi_tips_error, Toast.LENGTH_SHORT).show()
         }
     }
 
+    /**
+     * 检查定位权限。
+     *
+     * 这里**不再**设 `isMyLocationEnabled = true`：高德原生蓝点必须配
+     * `setLocationSource` 才会画，只设这个开关不会有任何点，还会多起一个定位源。
+     * 当前位置改由 [updateMeMarker] 自己画（与引导页一致）。
+     */
     private fun enableMyLocation() {
         val granted = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -252,16 +277,93 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         }
         if (!granted) {
             ensureLocationPermission()
-            return
         }
-        runCatching { aMap?.isMyLocationEnabled = true }
+    }
+
+    /**
+     * 当前位置点。
+     *
+     * 为什么自己画而不是用高德原生蓝点：
+     * 原生蓝点必须同时设置 `setLocationSource` 和 `isMyLocationEnabled = true`，
+     * 只设后者 SDK 不会画任何东西（导航页之前就少了这个点）。
+     * 而且原生蓝点用的是 SDK 自己的定位源，与本 App 用来算路的高德定位
+     * 不是同一帧数据，点和路线会对不上。自己画一个 marker 更可控，
+     * 与引导页的做法保持一致。
+     */
+    private fun updateMeMarker(lat: Double, lng: Double, accuracy: Float) {
+        val map = aMap ?: return
+        if (lat == 0.0 && lng == 0.0) return
+        try {
+            val pos = LatLng(lat, lng)
+            val m = meMarker
+            if (m == null) {
+                meMarker = map.addMarker(
+                    MarkerOptions()
+                        .position(pos)
+                        .anchor(0.5f, 0.5f)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                        .setFlat(true)
+                        .zIndex(9f)
+                )
+            } else {
+                m.position = pos
+            }
+            // 信号差时点变淡，提示用户（不用额外文案打扰）
+            meMarker?.alpha = if (accuracy > 0f && accuracy <= 40f) 1f else 0.7f
+        } catch (_: Exception) {
+        }
     }
 
     private fun moveToMyLocation() {
         val loc = vm.currentLocation ?: return
+        updateMeMarker(loc.first, loc.second, vm.accuracy.value)
         aMap?.animateCamera(
             CameraUpdateFactory.newLatLngZoom(LatLng(loc.first, loc.second), 16f)
         )
+    }
+
+    /**
+     * 强制取一次实时定位，然后移动地图。
+     * 「更新刷新定位」文字按钮与右下角浮动定位钮都调这里 —— 两个按钮行为完全一致，
+     * 都是"主动向定位 SDK 要一个新位置"，而不是读系统缓存。
+     */
+    private fun locateNow() {
+        ensureLocationPermission()
+        if (!vm.hasLocationPermission()) return
+        vm.refreshLocation(force = true)
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(350)
+            vm.locating.first { !it }
+            val loc = vm.currentLocation
+            if (loc == null) {
+                Toast.makeText(requireContext(), R.string.navi_locate_failed, Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                updateMeMarker(loc.first, loc.second, vm.accuracy.value)
+                aMap?.animateCamera(
+                    CameraUpdateFactory.newLatLngZoom(LatLng(loc.first, loc.second), 16.5f)
+                )
+            }
+        }
+    }
+
+    /**
+     * 切换到本页时由 MainActivity 调用。
+     * 定位是会过期的：上一次进导航页可能是几小时前，直接沿用会显示旧位置，
+     * 所以每次页面可见都主动刷新一次。
+     */
+    fun onTabShown() {
+        if (!isAdded || view == null) return
+        if (!vm.hasLocationPermission()) {
+            ensureLocationPermission()
+            return
+        }
+        vm.refreshLocation(force = true)
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(400)
+            vm.locating.first { !it }
+            moveToMyLocation()
+        }
     }
 
     private fun ensureLocationPermission() {
@@ -329,7 +431,7 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
     }
 
     private fun confirmDelete(place: SavedPlaceEntity) {
-        MaterialAlertDialogBuilder(requireContext())
+        MotoDialog.builder(requireContext())
             .setTitle(R.string.place_delete_title)
             .setMessage(getString(R.string.place_delete_message, place.name))
             .setNegativeButton(R.string.cancel, null)
@@ -342,16 +444,19 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
 
     // ---------- 导航启动 ----------
 
-    /** 点击搜索结果 / 常用地址 → 像专业导航软件一样直接开始导航 */
+    /**
+     * 点击搜索结果 / 常用地址 → 先到「选择路线」页看方案，再决定走哪条。
+     * 不再像以前那样点一下地点就直接进导航。
+     */
     private fun openGuidance(name: String, lat: Double, lng: Double) {
         hideTips()
         etSearch.setText("")
-        val intent = Intent(requireContext(), GuidanceActivity::class.java).apply {
-            putExtra(GuidanceActivity.EXTRA_NAME, name)
-            putExtra(GuidanceActivity.EXTRA_LAT, lat)
-            putExtra(GuidanceActivity.EXTRA_LNG, lng)
-        }
-        startActivity(intent)
+        val loc = vm.currentLocation
+        RouteSelectActivity.start(
+            requireContext(), name, lat, lng,
+            fromLat = loc?.first ?: 0.0,
+            fromLng = loc?.second ?: 0.0
+        )
     }
 
     private fun hideTips() {
@@ -363,29 +468,26 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         val etName = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_name)
         val etLat = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_lat)
         val etLng = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_dest_lng)
-        // 坐标框只放 hint，不预填。
+        val tilLat = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_dest_lat)
+        val tilLng = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_dest_lng)
+        // 坐标框只放提示，不预填。
         // 预填会让用户输入变成"追加"，得到 30.xxxx40.0801 这种拼接值，算出离谱路线。
+        // 注意提示要设在 TextInputLayout 的 helperText 上：
+        // 直接设 EditText.hint 会和 TIL 自己的 floating hint 抢同一块位置，
+        // 叠成「纬度（GCJ02，如 39.9087）42)」这种鬼样子。
         vm.currentLocation?.let { (lat, lng) ->
-            etLat.hint = getString(R.string.manual_dest_lat_hint, lat)
-            etLng.hint = getString(R.string.manual_dest_lng_hint, lng)
+            tilLat.helperText = getString(R.string.manual_dest_use_current, lat)
+            tilLng.helperText = getString(R.string.manual_dest_use_current, lng)
         }
-        MaterialAlertDialogBuilder(requireContext())
+        // 「选择导航方式」不再作为中性按钮：导航页底部已有「选择地图」，
+        // 三颗长中文按钮还会被 Material 挤成竖排。这里只留 取消 / 开始导航。
+        MotoDialog.builder(requireContext())
             .setTitle(R.string.manual_dest_title)
             .setView(dialogView)
             .setNegativeButton(R.string.cancel, null)
-            .setNeutralButton(R.string.map_choice_title) { _, _ ->
-                val name = etName.text?.toString()?.trim().orEmpty()
-                val lat = etLat.text?.toString()?.trim()?.toDoubleOrNull()
-                val lng = etLng.text?.toString()?.trim()?.toDoubleOrNull()
-                if (name.isNotEmpty() && lat != null && lng != null) {
-                    showMapChoiceFor(name, lat, lng)
-                } else {
-                    Toast.makeText(requireContext(), R.string.place_input_invalid, Toast.LENGTH_SHORT).show()
-                }
-            }
             .setPositiveButton(R.string.start_navi) { _, _ ->
                 val name = etName.text?.toString()?.trim().orEmpty().ifEmpty { "目的地" }
-                // 坐标留空 = 用当前位置（hint 里已经给出提示）
+                // 坐标留空 = 用当前位置（helperText 里已经给出提示）
                 val cur = vm.currentLocation
                 val lat = etLat.text?.toString()?.trim()?.toDoubleOrNull() ?: cur?.first
                 val lng = etLng.text?.toString()?.trim()?.toDoubleOrNull() ?: cur?.second
@@ -398,35 +500,17 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
             .show()
     }
 
-    private fun showMapChoice() {
-        val loc = vm.currentLocation
-        if (loc == null) {
-            Toast.makeText(requireContext(), R.string.navi_need_location, Toast.LENGTH_SHORT).show()
-            return
-        }
-        Toast.makeText(requireContext(), R.string.navi_map_choice_hint, Toast.LENGTH_LONG).show()
-        showMapChoiceFor("目的地", loc.first, loc.second)
-    }
-
-    private fun showMapChoiceFor(name: String, lat: Double, lng: Double) {
-        val dialog = MapChoiceDialog.newInstance(name, lat, lng)
-        dialog.onPhoneNavi = { openGuidance(name, lat, lng) }
-        dialog.onBleNavi = {
-            val intent = Intent(requireContext(), HudActivity::class.java).apply {
-                putExtra(HudActivity.EXTRA_NAME, name)
-                putExtra(HudActivity.EXTRA_LAT, lat)
-                putExtra(HudActivity.EXTRA_LNG, lng)
-            }
-            startActivity(intent)
-        }
-        dialog.show(childFragmentManager, "map_choice")
-    }
-
     // ---------- 高德 Key ----------
 
     private fun showKeySetup() {
         val dialog = KeySetupDialog()
         dialog.show(childFragmentManager, "key_setup")
+    }
+
+    /** 路线偏好：与「选择路线」页共用同一个对话框 */
+    private fun showRoutePrefs() {
+        val d = RoutePrefsDialog()
+        d.show(childFragmentManager, "route_prefs")
     }
 
     private fun refreshKeyCard() {
@@ -451,6 +535,8 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         super.onResume()
         mapView?.onResume()
         refreshKeyCard()
+        // 从二级页面（管理地址、坐标输入等）返回时同步刷新一次位置
+        if (isVisible) vm.refreshLocation()
     }
 
     override fun onPause() {
@@ -465,6 +551,7 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
 
     override fun onDestroyView() {
         searchRunnable?.let { searchHandler.removeCallbacks(it) }
+        meMarker = null
         mapView?.onDestroy()
         mapView = null
         aMap = null

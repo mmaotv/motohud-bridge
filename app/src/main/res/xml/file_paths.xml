@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider：更新包下载目录对外授权（仅本应用可用） -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path
+        name="updates"
+        path="updates/" />
+    <external-cache-path
+        name="external_updates"
+        path="updates/" />
+</paths>

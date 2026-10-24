@@ -4,6 +4,9 @@ import android.content.Context
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
 /**
@@ -30,9 +33,14 @@ class AmapLocator(private val context: Context) {
         val bearing: Float,
         val speedMps: Float,
         /** 定位来源：1=GPS 2=前次 4=缓存 5=离线 6=网络 8=高精度融合 */
-        val locationType: Int
+        val locationType: Int,
+        /** 反地理编码地址（仅单次定位请求，连续定位为 null） */
+        val address: String? = null
     ) {
         val fromSatellite: Boolean get() = locationType == 1 || locationType == 8
+
+        /** 是否来自本地缓存（上一次定位结果，可能已经是很久以前的位置） */
+        val isCache: Boolean get() = locationType == 4
     }
 
     private var client: AMapLocationClient? = null
@@ -42,8 +50,10 @@ class AmapLocator(private val context: Context) {
     fun isAvailable(): Boolean = AmapManager.initLocation(context)
 
     /**
-     * 开始连续定位。
-     * @param onFix 每帧回调（主线程），仅 errCode == 0 时触发
+     * 开始连续定位，把每帧通过 [onFix] 回调（主线程），仅 errCode == 0 时触发。
+     *
+     * 地图蓝点（AMap.setLocationSource）需要持续的位置流，
+     * 所以这与 [locateOnce] 分开：后者是一次性的新鲜定位，用于"刷新定位"。
      */
     fun start(onFix: (Fix) -> Unit, onError: ((Int) -> Unit)? = null) {
         if (running) stop()
@@ -96,6 +106,101 @@ class AmapLocator(private val context: Context) {
         }.onFailure {
             runCatching { c.onDestroy() }
         }
+    }
+
+    /**
+     * 单次定位（导航页「刷新定位」与浮动定位按钮用）。
+     *
+     * 与连续定位的关键差异：
+     *  - `isLocationCacheEnable = false`：**不要缓存结果**。高德默认会先把上一次
+     *    的定位（可能是几小时前、甚至别的城市）当第一帧回调回来，界面就会
+     *    "人在重庆却显示北京"。单次定位必须是新鲜值；
+     *  - `isNeedAddress = true`：带回城市/街道，界面直接显示
+     *    "重庆市渝北区龙山街道"，用户一眼能判断对不对；
+     *  - 超时兜底，避免一直转圈。
+     */
+    suspend fun locateOnce(timeoutMs: Long = 9000L): Fix? {
+        if (!isAvailable()) return null
+        return withTimeoutOrNull(timeoutMs) {
+            suspendCancellableCoroutine<Fix?> { cont ->
+                var finished = false
+                var client: AMapLocationClient? = null
+
+                fun cleanup() = runCatching {
+                    client?.stopLocation()
+                    client?.onDestroy()
+                }.let { }
+
+                fun finish(value: Fix?) {
+                    if (finished) return
+                    finished = true
+                    cleanup()
+                    if (cont.isActive) cont.resume(value)
+                }
+
+                val c = runCatching { AMapLocationClient(context.applicationContext) }.getOrNull()
+                if (c == null) {
+                    finish(null)
+                    return@suspendCancellableCoroutine
+                }
+                client = c
+                runCatching {
+                    c.setLocationOption(
+                        AMapLocationClientOption().apply {
+                            locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
+                            isOnceLocation = true
+                            isOnceLocationLatest = true
+                            isNeedAddress = true
+                            isMockEnable = com.motohud.ble.BuildConfig.DEBUG
+                            isLocationCacheEnable = false
+                            isGpsFirst = false
+                            httpTimeOut = 8000L
+                        }
+                    )
+                    c.setLocationListener { loc: AMapLocation? ->
+                        if (loc == null || loc.errorCode != 0) {
+                            finish(null)
+                            return@setLocationListener
+                        }
+                        val isWgs = loc.coordType.equals("WGS84", ignoreCase = true)
+                        val (lat, lng) = if (isWgs) {
+                            com.motohud.ble.navi.CoordConverter.wgs84ToGCJ(
+                                loc.latitude, loc.longitude
+                            )
+                        } else {
+                            loc.latitude to loc.longitude
+                        }
+                        finish(
+                            Fix(
+                                lat = lat,
+                                lng = lng,
+                                accuracy = loc.accuracy,
+                                bearing = loc.bearing,
+                                speedMps = loc.speed,
+                                locationType = loc.locationType,
+                                address = buildAddress(loc)
+                            )
+                        )
+                    }
+                    c.startLocation()
+                }.onFailure { finish(null) }
+
+                cont.invokeOnCancellation { cleanup() }
+            }
+        }
+    }
+
+    /** 把省市区街道拼成一句可读地址（去重，避免"北京市北京市"） */
+    private fun buildAddress(loc: AMapLocation): String? {
+        val parts = mutableListOf<String>()
+        listOf(loc.province, loc.city, loc.district, loc.street, loc.streetNum, loc.poiName)
+            .filterNotNull()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { p -> if (parts.none { it == p || it.endsWith(p) }) parts.add(p) }
+        val joined = parts.joinToString("")
+        if (joined.isNotBlank()) return joined
+        return loc.address?.takeIf { it.isNotBlank() }
     }
 
     fun stop() {

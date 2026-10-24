@@ -5,6 +5,7 @@
     <!-- 底部导航 -->
     <string name="nav_scan">连接</string>
     <string name="nav_garage">爱车</string>
+    <string name="nav_vehicle">车况</string>
     <string name="nav_dashboard">仪表</string>
     <string name="nav_navigation">导航</string>
     <string name="nav_examination">体检</string>
@@ -96,28 +97,30 @@
     <!-- 导航页 -->
     <string name="navi_title">投屏导航</string>
     <string name="navi_location_unknown">当前位置：未获取（点击刷新定位）</string>
+    <string name="navi_locating">正在定位…</string>
+    <string name="navi_locate_failed">定位失败，请确认已开启定位服务后重试</string>
     <string name="navi_refresh_location">刷新定位</string>
     <string name="navi_saved_places">常用地址</string>
     <string name="navi_add_place">添加</string>
     <string name="navi_manage_places">管理地址</string>
     <string name="navi_places_empty">还没有常用地址。点击"管理地址"添加家庭、公司等常用地址，之后在地图上方点击地址即可一键开始导航。</string>
+    <string name="navi_places_none">还没有常用地址\n长按地图上的位置或用"添加"保存一个</string>
     <string name="navi_manual_dest">输入坐标</string>
-    <string name="navi_btn_map">选择地图</string>
-    <string name="navi_tip">提示：投屏导航将导航信息（转向图标 + 剩余距离）通过蓝牙实时发送给车机；未连接车机时也可运行，用于演示与调试。</string>
+    <string name="navi_tip">导航信息（转向图标 + 剩余距离）会通过蓝牙实时发送给车机；未连接车机时仅在本机显示。</string>
     <string name="navi_need_location">请先获取当前位置（点击刷新定位）</string>
-    <string name="navi_map_choice_hint">已用当前位置作为目的地，可在对话框中选择地图；输入精确目的地请用"输入坐标"。</string>
     <string name="navi_search_hint">搜索目的地（如：加油站、商场）</string>
     <string name="navi_cast">投屏</string>
     <string name="navi_ble_hint">未连接车机：导航信息仅在本机显示，连接车机后将自动转发到车机屏幕。</string>
     <string name="navi_tips_searching">正在搜索…</string>
     <string name="navi_tips_empty">未找到相关地点，请换个关键词试试</string>
-    <string name="navi_tips_error">搜索失败，请检查高德 Key 配置与网络</string>
-    <string name="navi_tips_error_code">搜索失败（错误码 %1$d）：请确认 Key 已绑定包名 com.motohud.ble，并已开通「搜索」服务</string>
+    <string name="navi_tips_error">搜索失败，请检查网络后重试</string>
+    <!-- 仅调试构建会展示错误码，正式包不出现 -->
+    <string name="navi_tips_error_code">搜索失败（错误码 %1$d）</string>
     <string name="navi_starting">正在规划路线…</string>
 
     <!-- 高德 Key 配置 -->
     <string name="amap_key_title">高德地图 Key</string>
-    <string name="amap_key_hint_navi">配置高德地图 Key 后，即可使用地图展示、目的地搜索与路线导航。未配置时仅可使用蓝牙投屏演示导航。</string>
+    <string name="amap_key_hint_navi">配置后即可使用地图展示、目的地搜索与路线导航。</string>
     <string name="amap_key_hint_settings">在高德开放平台（lbs.amap.com）申请 Android Key，绑定包名 com.motohud.ble 与当前签名，粘贴到下方即可启用地图功能。</string>
     <string name="amap_key_setup">去配置</string>
     <string name="amap_key_input_hint">粘贴高德 API Key</string>
@@ -149,13 +152,12 @@
     <string name="dest_name">目的地名称</string>
     <string name="manual_dest_lat_hint">留空使用当前位置（%1$.6f）</string>
     <string name="manual_dest_lng_hint">留空使用当前位置（%1$.6f）</string>
+    <string name="manual_dest_use_current">留空则使用当前位置 %1$.6f</string>
 
-    <!-- 地图选择（复刻原车机 App 的地图选择逻辑） -->
-    <string name="map_choice_title">选择导航方式</string>
+    <!-- 第三方地图交接（路线选择页 → 高德 / 百度 / 腾讯 / 系统地图） -->
     <string name="map_amap">高德地图</string>
     <string name="map_baidu">百度地图</string>
     <string name="map_tencent">腾讯地图</string>
-    <string name="map_ble_navi">蓝牙投屏导航</string>
     <string name="map_system">系统地图</string>
 
     <!-- HUD -->
@@ -168,17 +170,11 @@
     <string name="hud_traveled_label">已行驶</string>
     <string name="hud_gps_label">定位模式</string>
     <string name="hud_arrived">已到达目的地</string>
-    <string name="hud_demo_straight">直行</string>
-    <string name="hud_demo_left">左转</string>
-    <string name="hud_demo_right">右转</string>
-    <string name="hud_demo_left_front">左前</string>
-    <string name="hud_demo_right_front">右前</string>
-    <string name="hud_demo_uturn">掉头</string>
-    <string name="hud_demo_arrive">到达</string>
-    <string name="hud_speed_down">速度 -10</string>
-    <string name="hud_speed_up">速度 +10</string>
     <string name="hud_stop">停止导航</string>
     <string name="hud_navi_stopped">导航已停止</string>
+    <string name="hud_screen_off">息屏导航</string>
+    <string name="hud_screen_off_on">息屏导航已开启：关闭屏幕后仍会继续播报并推送车机</string>
+    <string name="hud_screen_off_off">息屏导航已关闭</string>
 
     <!-- 专业导航页 -->
     <string name="guidance_title">导航</string>
@@ -188,16 +184,17 @@
     <string name="guidance_remain">剩余距离</string>
     <string name="guidance_speed">当前速度</string>
     <string name="guidance_gps">定位</string>
-    <string name="guidance_simulated">推算</string>
+    <string name="guidance_simulated">离线</string>
     <string name="guidance_stop">停止导航</string>
     <string name="guidance_finish">完成</string>
     <string name="guidance_ble_hint">未连接车机：导航指令暂不发送，连接后自动转发。</string>
-    <string name="guidance_no_location">尚未获取到定位，正在使用默认起点演示；授权定位后将使用真实位置。</string>
-    <string name="guidance_need_key">需要先配置高德地图 Key 才能使用路线导航。</string>
-    <string name="guidance_demo_mode">未配置高德 Key，已进入演示模式（直线推算）。</string>
-    <string name="guidance_demo_short">直线推算</string>
-    <string name="guidance_exit_title">退出导航？</string>
-    <string name="guidance_exit_message">退出后将停止向车机发送导航信息。</string>
+    <string name="guidance_no_location">暂时没有定位，已切换到离线推算；开启定位后会自动使用真实位置。</string>
+    <string name="guidance_need_key">地图服务暂不可用，无法规划路线。</string>
+    <string name="guidance_demo_mode">暂时无法获取路线，已切换到离线引导。</string>
+    <string name="guidance_demo_short">离线</string>
+    <string name="guidance_plan_failed_short">路线规划失败，请稍后重试</string>
+    <string name="guidance_exit_title">结束导航？</string>
+    <string name="guidance_exit_message">结束后将停止向车机发送导航信息。</string>
 
     <!-- 导航页新增 -->
     <string name="navi_mode_motorcycle">摩托车</string>
@@ -207,13 +204,13 @@
     <string name="navi_voice">语音播报</string>
     <string name="navi_voice_on">语音已开启</string>
     <string name="navi_voice_off">语音已关闭</string>
-    <string name="navi_signal_weak">GPS 信号弱，已按路线推算</string>
+    <string name="navi_signal_weak">GPS 信号弱，正按路线方向继续引导</string>
     <string name="navi_overview">全览路线</string>
     <string name="navi_recenter">回到当前位置</string>
     <string name="navi_cast_to_car">投屏到车机</string>
     <string name="navi_route_mode">路线模式</string>
-    <string name="navi_motorcycle_title">摩托车路线</string>
-    <string name="navi_motorcycle_summary">高德搜索 SDK 没有摩托车算路（摩托策略属于收费的导航 SDK），本 App 用「躲避拥堵 + 不走快速路」的驾车策略近似规避禁摩路段。</string>
+    <string name="navi_motorcycle_title">骑行路线</string>
+    <string name="navi_motorcycle_summary">开启后会尽量绕开高速与快速路，走地面道路。</string>
     <string name="navi_motorcycle_avoid_highway">避开快速路 / 高架（推荐）</string>
     <string name="navi_motorcycle_avoid_highway_desc">国内禁摩多针对快速路、高架与隧道，开启后绕行地面道路</string>
     <string name="navi_motorcycle_legal">摩托车能否上路以当地法规与现场禁摩标志为准</string>
@@ -222,7 +219,7 @@
     <string name="navi_mode_switched_car">已切换为驾车路线</string>
     <string name="navi_accuracy_unknown">精度未知</string>
     <string name="navi_gps_weak_title">定位精度较差</string>
-    <string name="navi_gps_weak_message">当前定位精度约 ±%1$d 米，可能是高架下、密集楼宇间或隧道附近。建议停到开阔处等待信号恢复；期间导航会沿路线推算，不影响投屏。</string>
+    <string name="navi_gps_weak_message">当前定位精度约 ±%1$d 米。建议停到开阔处等待信号恢复，期间导航会沿路线方向继续引导。</string>
     <string name="navi_phone_mode">手机导航</string>
     <string name="navi_cast_mode">投屏车机</string>
     <string name="navi_phone_mode_desc">手机屏幕全屏地图 + 转向引导，同时继续向车机推送数据</string>
@@ -300,4 +297,82 @@
     <string name="amap_info_copied">已复制，粘贴到高德控制台的「包名」与「SHA1」输入框即可</string>
     <string name="amap_sha1_unavailable">读取失败</string>
     <string name="amap_apply_tip">高德 Key 与「包名 + 签名 SHA1」绑定，必须用自己的签名重新申请（免费）。把下面两项填进控制台，拿到 Key 后粘贴到下方。</string>
+
+    <!-- ============ 路线偏好 ============ -->
+    <string name="route_prefs">路线偏好</string>
+    <string name="route_prefs_smart_desc">默认为「高德智能推荐」，会同时给出几套方案供你比较。</string>
+    <string name="route_pref_smart">高德智能推荐</string>
+    <string name="route_prefs_multi_desc">也可以自己定义约束（可多选），组合越严格，绕行可能越多。</string>
+    <string name="route_pref_highway_first">高速优先</string>
+    <string name="route_pref_avoid_highway">不走高速</string>
+    <string name="route_pref_avoid_jam">躲避拥堵</string>
+    <string name="route_pref_avoid_toll">少收费</string>
+    <string name="route_pref_traffic_first">路况优先</string>
+    <string name="route_pref_time_first">时间优先</string>
+    <string name="route_prefs_motor_note">骑行提示：多数城市禁摩针对快速路与高架，选「不走高速」能避开大部分限行路段；能否通行仍以现场标志与当地法规为准。</string>
+
+    <!-- ============ 路线选择 ============ -->
+    <string name="route_select_title">选择路线</string>
+    <string name="route_select_pick">为你找到以下方案，选择后开始导航</string>
+    <string name="route_select_empty">没有可用的路线方案</string>
+    <string name="route_select_start">开始导航</string>
+    <string name="route_select_other_map">用其他地图打开</string>
+    <string name="route_select_other_map_desc">把这个目的地交给高德、百度或系统地图继续导航</string>
+    <string name="route_select_no_map">地图服务不可用，暂时无法规划路线</string>
+
+    <!-- ============ 关于页 ============ -->
+    <string name="about_title">关于</string>
+    <string name="about_version">版本</string>
+    <string name="about_check_update">检查更新</string>
+    <string name="about_checking">正在检查…</string>
+    <string name="about_up_to_date">已是最新版本</string>
+    <string name="about_new_version">发现新版本 %1$s</string>
+    <string name="about_download">下载并安装</string>
+    <string name="about_downloading">正在下载 %1$d%%</string>
+    <string name="about_check_failed">检查更新失败，请稍后重试</string>
+    <string name="about_no_release">暂无发布版本信息</string>
+    <string name="about_changelog">更新日志</string>
+    <string name="about_device_info">车机信息</string>
+    <string name="about_device_conn">连接状态</string>
+    <string name="about_device_name">设备名称</string>
+    <string name="about_device_protocol">通信协议</string>
+    <string name="about_device_signal">信号强度</string>
+    <string name="about_device_battery">车机电压</string>
+    <string name="about_device_firmware">固件版本</string>
+    <string name="about_device_last">最近数据</string>
+    <string name="about_connected">已连接</string>
+    <string name="about_disconnected">未连接</string>
+    <string name="about_value_unknown">--</string>
+    <string name="about_repo">开源仓库</string>
+    <string name="about_install_permission">需要授予「安装未知应用」权限才能完成更新</string>
+    <string name="about_download_failed">下载失败，请检查网络后重试</string>
+    <string name="about_open_failed">无法打开安装程序，请手动安装已下载的文件</string>
+
+    <!-- 导航前台服务（息屏导航） -->
+    <string name="navi_fg_channel">导航进行中</string>
+    <string name="navi_fg_title">导航进行中</string>
+    <string name="navi_fg_text">正在持续定位并向车机推送导航信息</string>
+
+    <!-- 导航历史 -->
+    <string name="navi_history_title">导航历史</string>
+    <string name="navi_history_entry">导航历史</string>
+    <string name="navi_history_clear">清空</string>
+    <string name="navi_history_empty">还没有导航记录。完成一次导航后，这里会记下目的地、出发地和用时。</string>
+    <string name="navi_history_from">出发地</string>
+    <string name="navi_history_range_today">今天</string>
+    <string name="navi_history_range_7d">近 7 天</string>
+    <string name="navi_history_range_30d">近 30 天</string>
+    <string name="navi_history_range_all">全部</string>
+    <string name="navi_history_summary">共 %1$d 次导航 · 累计 %2$s · 平均 %3$s</string>
+    <string name="navi_history_device_none">未连接车机</string>
+    <string name="navi_history_device">车机 %1$s · 电压 %2$s · 水温 %3$s · 油量 %4$s</string>
+    <string name="navi_history_device_cast">投屏车机</string>
+    <string name="navi_history_clear_confirm_title">清空导航历史</string>
+    <string name="navi_history_clear_confirm">清空后无法恢复，确定要删除全部 %1$d 条记录吗？</string>
+    <string name="navi_history_deleted">已删除</string>
+    <string name="navi_history_cleared">已清空</string>
+    <string name="navi_history_min">%1$d 分 %2$d 秒</string>
+    <string name="navi_history_sec">%1$d 秒</string>
+    <string name="navi_history_hour">%1$d 小时 %2$d 分</string>
+    <string name="navi_history_km">%1$s 公里</string>
 </resources>

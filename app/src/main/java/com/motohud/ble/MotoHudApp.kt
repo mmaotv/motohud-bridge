@@ -15,6 +15,7 @@ class MotoHudApp : Application() {
     val db by lazy { AppDatabase.get(this) }
     val searchEngine by lazy { SearchEngine(db.searchHistoryDao()) }
     val savedPlaceDao by lazy { db.savedPlaceDao() }
+    val naviHistoryDao by lazy { db.naviHistoryDao() }
     val bleManager by lazy { BleConnectionManager(this) }
     val faultRepository get() = FaultRepository
 
@@ -33,8 +34,16 @@ class MotoHudApp : Application() {
         super.onCreate()
         // 恢复上次选择的车型
         BikePrefs.init(this)
-        // 导航偏好（摩托车模式 / 语音开关）
+        // 导航偏好（路线偏好 / 语音开关 / 息屏导航）
         com.motohud.ble.data.NaviPrefs.init(this)
+
+        // 自愈：引导流程已完成说明用户同意过隐私政策，但高德侧的同意标记是另一套存储，
+        // 重装、清数据或跨版本升级后可能缺失。不同步的话地图与搜索会一直不可用，
+        // 界面上还会莫名出现"去配置地图"的提示。
+        if (com.motohud.ble.ui.OnboardingActivity.isDone(this) && !AmapManager.isPrivacyAgreed(this)) {
+            AmapManager.agreePrivacy(this)
+        }
+
         // 已同意隐私政策时预热高德 SDK（未同意则等引导页授权后再初始化）
         if (AmapManager.isPrivacyAgreed(this) && AmapManager.hasKey(this)) {
             AmapManager.initMap(this)

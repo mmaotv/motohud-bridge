@@ -106,38 +106,33 @@ class HudActivity : AppCompatActivity() {
             }
             startedHere = true
             engine.start(destName, destLat, destLng)
+            com.motohud.ble.data.NaviPrefs.init(this)
+            if (com.motohud.ble.data.NaviPrefs.screenOffNavi.value) {
+                com.motohud.ble.service.NaviForegroundService.start(this)
+            }
         }
         updateDeviceLabel()
 
         // ---------- 控制按钮 ----------
-        findViewById<View>(R.id.btn_hud_speed_down).setOnClickListener {
-            engine.setSpeed(engine.state.value.speedKmh - 10f)
-        }
-        findViewById<View>(R.id.btn_hud_speed_up).setOnClickListener {
-            engine.setSpeed(engine.state.value.speedKmh + 10f)
-        }
-
-        // 演示转向按钮：立即发送对应图标（无车机时验证协议链路）
-        findViewById<View>(R.id.btn_hud_demo_straight).setOnClickListener {
-            engine.overrideIcon(IconType.STRAIGHT)
-        }
-        findViewById<View>(R.id.btn_hud_demo_left).setOnClickListener {
-            engine.overrideIcon(IconType.LEFT)
-        }
-        findViewById<View>(R.id.btn_hud_demo_right).setOnClickListener {
-            engine.overrideIcon(IconType.RIGHT)
-        }
-        findViewById<View>(R.id.btn_hud_demo_left_front).setOnClickListener {
-            engine.overrideIcon(IconType.LEFT_FRONT)
-        }
-        findViewById<View>(R.id.btn_hud_demo_right_front).setOnClickListener {
-            engine.overrideIcon(IconType.RIGHT_FRONT)
-        }
-        findViewById<View>(R.id.btn_hud_demo_uturn).setOnClickListener {
-            engine.overrideIcon(IconType.LEFT_TURN_AROUND)
-        }
-        findViewById<View>(R.id.btn_hud_demo_arrive).setOnClickListener {
-            engine.overrideIcon(IconType.ARRIVED_DESTINATION)
+        // 原先这里有一排"手动发某个转向图标"与"速度 ±10"的按钮，属于联调面板，
+        // 已从用户界面移除。改为「息屏导航」开关。
+        val swScreenOff = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
+            R.id.sw_hud_screen_off
+        )
+        com.motohud.ble.data.NaviPrefs.init(this)
+        swScreenOff.isChecked = com.motohud.ble.data.NaviPrefs.screenOffNavi.value
+        swScreenOff.setOnCheckedChangeListener { _, checked ->
+            com.motohud.ble.data.NaviPrefs.setScreenOffNavi(checked)
+            if (checked && !stopped) {
+                com.motohud.ble.service.NaviForegroundService.start(this)
+            } else {
+                com.motohud.ble.service.NaviForegroundService.stop(this)
+            }
+            Toast.makeText(
+                this,
+                if (checked) R.string.hud_screen_off_on else R.string.hud_screen_off_off,
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
         findViewById<View>(R.id.btn_hud_stop).setOnClickListener {
@@ -174,6 +169,7 @@ class HudActivity : AppCompatActivity() {
         }
         stopped = true
         engine.stop()
+        com.motohud.ble.service.NaviForegroundService.stop(this)
         if (sendFinish) app.naviForwarder.forwardFinish()
         app.naviForwarder.forwardExit()
         Toast.makeText(this, R.string.hud_navi_stopped, Toast.LENGTH_SHORT).show()
@@ -224,8 +220,9 @@ class HudActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        app.naviForwarder.detach(TAG_FORWARD)
         super.onStop()
+        // 息屏导航：熄屏后本页会 stop，但导航仍在跑，不能断转发
+        if (stopped || isFinishing) app.naviForwarder.detach(TAG_FORWARD)
     }
 
     override fun onResume() {
@@ -239,8 +236,10 @@ class HudActivity : AppCompatActivity() {
         if (startedHere && !stopped) {
             stopped = true
             engine.stop()
+            com.motohud.ble.service.NaviForegroundService.stop(this)
             app.naviForwarder.forwardExit()
         }
+        app.naviForwarder.detach(TAG_FORWARD)
         super.onDestroy()
     }
 
