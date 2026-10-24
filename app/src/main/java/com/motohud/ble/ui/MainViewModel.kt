@@ -78,9 +78,12 @@ class MainViewModel(app: MotoHudApp) : ViewModel() {
                         }
                         if (event.state == BleConnectionManager.State.CONNECTED) {
                             com.motohud.ble.data.BikeSnapshot.deviceName = ble.connectedDeviceName
-                            sendHello()
                         }
                     }
+
+                    // 原厂在 CCCD 写入成功（0x1234 通知打开）后才发 HELLO 握手，
+                    // 提前发会因写特征未就绪而丢失（NormalMotorFragment.initBleController）
+                    is BleConnectionManager.Event.NotifyReady -> sendHello()
 
                     is BleConnectionManager.Event.NotifyData -> handleFrame(event.frame)
 

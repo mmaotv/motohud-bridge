@@ -39,6 +39,8 @@ class BleConnectionManager(private val context: Context) {
         data class ScanUpdate(val devices: List<ScanItem>) : Event
         data class ScanFinished(val devices: List<ScanItem>) : Event
         data class ConnectionState(val state: State) : Event
+        /** CCCD 写入成功：0x1234 通知已打开，可以开始收发（原厂此时发 HELLO 握手） */
+        data object NotifyReady : Event
         data class NotifyData(val hex: String, val frame: BleProtocol.Frame?) : Event
         data class WriteResult(val success: Boolean, val hex: String) : Event
         data class Error(val message: String) : Event
@@ -61,6 +63,10 @@ class BleConnectionManager(private val context: Context) {
     private var notifyCharacteristic: BluetoothGattCharacteristic? = null
     private var reconnectAttempts = 0
     private var scanning = false
+
+    /** Android BLE 一次只能挂一个写操作，原厂 FastBle 内部有队列，这里等价实现 */
+    private val writeQueue = ArrayDeque<ByteArray>()
+    private var writeBusy = false
 
     val scanResults = mutableMapOf<String, ScanItem>()
 
@@ -134,6 +140,17 @@ class BleConnectionManager(private val context: Context) {
             enableNotify(g, ch)
         }
 
+        override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS &&
+                d.uuid == UUID.fromString(BleConstants.UUID_CCCD)
+            ) {
+                Log.d(TAG, "CCCD written, notify ready")
+                _events.tryEmit(Event.NotifyReady)
+            } else if (status != BluetoothGatt.GATT_SUCCESS) {
+                _events.tryEmit(Event.Error("打开通知失败 status=$status"))
+            }
+        }
+
         @Deprecated("Deprecated in Java")
         override fun onCharacteristicChanged(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
             @Suppress("DEPRECATION") val value = ch.value ?: return
@@ -154,6 +171,8 @@ class BleConnectionManager(private val context: Context) {
             status: Int
         ) {
             _events.tryEmit(Event.WriteResult(status == BluetoothGatt.GATT_SUCCESS, ch.value.toHexString()))
+            writeBusy = false
+            drainWriteQueue()
         }
 
         private fun emitNotify(value: ByteArray) {
@@ -193,13 +212,15 @@ class BleConnectionManager(private val context: Context) {
     fun isScanning() = scanning
 
     @SuppressLint("MissingPermission")
-    fun connect(address: String) {
+    fun connect(address: String, fromReconnect: Boolean = false) {
         if (adapter?.isEnabled != true) {
             _events.tryEmit(Event.Error("蓝牙未开启"))
             return
         }
         stopScan()
+        val attempts = reconnectAttempts
         disconnect()
+        reconnectAttempts = if (fromReconnect) attempts else 0
         _state.value = State.CONNECTING
         _events.tryEmit(Event.ConnectionState(State.CONNECTING))
         val device: BluetoothDevice = adapter.getRemoteDevice(address)
@@ -223,7 +244,7 @@ class BleConnectionManager(private val context: Context) {
         g.writeDescriptor(cccd)
     }
 
-    /** 发送文本指令（自动经 0D..0D / 1E 封装） */
+    /** 发送文本指令（自动经 0D..0D / 1E 封装，排队串行写出） */
     @SuppressLint("MissingPermission")
     fun sendCommand(text: String) {
         val ch = notifyCharacteristic?.let {
@@ -235,10 +256,40 @@ class BleConnectionManager(private val context: Context) {
             return
         }
         val data = BleProtocol.encodeCommand(text)
-        ch.value = data
-        ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-        gatt?.writeCharacteristic(ch)
+        synchronized(writeQueue) {
+            writeQueue.addLast(data)
+        }
+        drainWriteQueue()
         Log.d(TAG, "sendCommand: $text -> ${data.toHexString()}")
+    }
+
+    private fun drainWriteQueue() {
+        val ch = notifyCharacteristic?.let {
+            gatt?.getService(UUID.fromString(BleConstants.UUID_SERVICE))
+                ?.getCharacteristic(UUID.fromString(BleConstants.UUID_WRITE))
+        }
+        if (ch == null) {
+            synchronized(writeQueue) { writeQueue.clear() }
+            return
+        }
+        val data = synchronized(writeQueue) {
+            if (writeBusy || writeQueue.isEmpty()) null else {
+                writeBusy = true
+                writeQueue.removeFirst()
+            }
+        } ?: return
+        // 原厂 0x2345 是 WRITE NO RESPONSE（nRF 实测），按特征属性选类型
+        ch.writeType = if (ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0) {
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        } else {
+            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        }
+        ch.value = data
+        @Suppress("DEPRECATION") val ok = gatt?.writeCharacteristic(ch) == true
+        if (!ok) {
+            writeBusy = false
+            _events.tryEmit(Event.WriteResult(false, data.toHexString()))
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -248,6 +299,7 @@ class BleConnectionManager(private val context: Context) {
         gatt?.close()
         gatt = null
         notifyCharacteristic = null
+        synchronized(writeQueue) { writeQueue.clear(); writeBusy = false }
         _connectedName = null
         _state.value = State.DISCONNECTED
         _events.tryEmit(Event.ConnectionState(State.DISCONNECTED))
@@ -261,7 +313,7 @@ class BleConnectionManager(private val context: Context) {
         _state.value = State.RECONNECTING
         _events.tryEmit(Event.ConnectionState(State.RECONNECTING))
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            connect(address)
+            connect(address, fromReconnect = true)
         }, BleConstants.RECONNECT_DELAY_MS)
     }
 
