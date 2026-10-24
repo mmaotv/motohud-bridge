@@ -28,9 +28,12 @@ import com.motohud.ble.BuildConfig
 import com.motohud.ble.MotoHudApp
 import com.motohud.ble.R
 import com.motohud.ble.ble.BleConnectionManager
+import com.motohud.ble.data.AppCache
 import com.motohud.ble.service.NotificationForwardService
 import com.motohud.ble.ui.navi.KeySetupDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 /**
@@ -241,6 +244,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.settings_onboarding),
             getString(R.string.settings_amap_key),
             getString(R.string.settings_privacy),
+            getString(R.string.settings_clear_cache),
             getString(R.string.settings_about)
         )
         MotoDialog.builder(this)
@@ -250,7 +254,8 @@ class MainActivity : AppCompatActivity() {
                     0 -> OnboardingActivity.start(this)
                     1 -> KeySetupDialog().show(supportFragmentManager, "key_setup")
                     2 -> showPrivacy()
-                    3 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
+                    3 -> showClearCache()
+                    4 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
                         startActivity(Intent(this, it))
                     }
                 }
@@ -265,6 +270,35 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.onboarding_privacy_body)
             .setPositiveButton(R.string.setting) { _, _ -> /* 已同意，无需操作 */ }
             .show()
+    }
+
+    /**
+     * 清除缓存：先异步算出当前大小展示给用户，确认后清空 cacheDir / externalCacheDir。
+     * 只清标准缓存目录（地图瓦片、搜索结果等），filesDir 里的用户数据不动。
+     */
+    private fun showClearCache() {
+        lifecycleScope.launch {
+            val size = withContext(Dispatchers.IO) { AppCache.size(this@MainActivity) }
+            val msg = if (size > 0) getString(R.string.cache_dialog_msg, AppCache.human(size))
+            else getString(R.string.cache_empty)
+            MotoDialog.builder(this@MainActivity)
+                .setTitle(R.string.cache_dialog_title)
+                .setMessage(msg)
+                .setPositiveButton(R.string.cache_clear_btn) { _, _ ->
+                    lifecycleScope.launch {
+                        val freed = withContext(Dispatchers.IO) {
+                            AppCache.clear(this@MainActivity)
+                        }
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.cache_cleared, AppCache.human(freed)),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
     }
 
     /** BLE 权限（复刻原 App：定位权限 + Android 12+ 蓝牙权限） */

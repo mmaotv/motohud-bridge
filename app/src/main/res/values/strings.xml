@@ -265,10 +265,22 @@
     <string name="settings_onboarding">重新查看新手引导</string>
     <string name="settings_notify">通知转发设置</string>
     <string name="settings_about">关于</string>
-    <string name="settings_version">版本</string>
+    <string name="settings_clear_cache">清除缓存</string>
+    <string name="cache_dialog_title">清除缓存</string>
+    <string name="cache_dialog_msg">当前缓存：%1$s\n\n缓存主要来自地图瓦片与搜索结果，清理后不影响任何用户数据，地图会在使用中自动重新下载。</string>
+    <string name="cache_clear_btn">清除</string>
+    <string name="cache_cleared">已清理 %1$s</string>
+    <string name="cache_empty">暂无缓存</string>
 
     <!-- 爱车页 -->
     <string name="garage_bike_photo">车型图片</string>
+    <string name="garage_photo_menu_title">车辆照片</string>
+    <string name="garage_photo_pick">从相册选择车照</string>
+    <string name="garage_photo_reset">恢复默认车型图</string>
+    <string name="garage_photo_change_bike">换个车型</string>
+    <string name="garage_photo_saved">车照已更新</string>
+    <string name="garage_photo_reset_done">已恢复默认车型图</string>
+    <string name="garage_photo_failed">图片处理失败，请换一张试试</string>
     <string name="garage_brand_placeholder">APRILIA</string>
     <string name="garage_model_placeholder">SR Max 300</string>
     <string name="garage_change">换车</string>
