@@ -16,6 +16,9 @@
     <color name="dialog_surface">#FF1F1F22</color>
     <color name="dialog_stroke">#33FFFFFF</color>
 
+    <!-- 顶栏/底栏专用表面色：必须完全不透明，保证顶部状态条与底部导航栏颜色一致 -->
+    <color name="bar_surface">#FF1C1C1E</color>
+
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#99EBEBF5</color>
     <color name="text_tertiary">#4DEBEBF5</color>

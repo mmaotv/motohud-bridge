@@ -190,6 +190,18 @@
                 android:paddingEnd="4dp"
                 android:text="@string/navi_manual_dest"
                 android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btn_navi_history"
+                style="@style/Widget.Moto.Button.Ghost"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="@string/navi_history_entry"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- 高德 Key 未配置引导 -->

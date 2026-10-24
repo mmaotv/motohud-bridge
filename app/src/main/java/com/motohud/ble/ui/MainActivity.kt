@@ -241,7 +241,6 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.settings_onboarding),
             getString(R.string.settings_amap_key),
             getString(R.string.settings_privacy),
-            getString(R.string.navi_history_entry),
             getString(R.string.settings_about)
         )
         MotoDialog.builder(this)
@@ -251,8 +250,7 @@ class MainActivity : AppCompatActivity() {
                     0 -> OnboardingActivity.start(this)
                     1 -> KeySetupDialog().show(supportFragmentManager, "key_setup")
                     2 -> showPrivacy()
-                    3 -> com.motohud.ble.ui.navi.NaviHistoryActivity.start(this)
-                    4 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
+                    3 -> com.motohud.ble.ui.about.AboutActivity::class.java.let {
                         startActivity(Intent(this, it))
                     }
                 }

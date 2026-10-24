@@ -156,6 +156,9 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         view.findViewById<View>(R.id.btn_manage_places).setOnClickListener { showManagePlaces() }
         view.findViewById<View>(R.id.btn_route_prefs).setOnClickListener { showRoutePrefs() }
         view.findViewById<View>(R.id.btn_manual_dest).setOnClickListener { showManualDestDialog() }
+        view.findViewById<View>(R.id.btn_navi_history).setOnClickListener {
+            com.motohud.ble.ui.navi.NaviHistoryActivity.start(requireContext())
+        }
         view.findViewById<View>(R.id.btn_setup_key).setOnClickListener { showKeySetup() }
         fabLocation.setOnClickListener { locateNow() }
 
