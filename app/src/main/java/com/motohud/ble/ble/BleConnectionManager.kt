@@ -144,16 +144,29 @@ class BleConnectionManager(private val context: Context) {
                 _events.tryEmit(Event.Error("服务发现失败 status=$status"))
                 return
             }
-            val service = g.getService(UUID.fromString(BleConstants.UUID_SERVICE))
-            val ch = service?.getCharacteristic(UUID.fromString(BleConstants.UUID_NOTIFY))
-            if (ch == null) {
-                BleDiagnostic.log("未找到服务/特征")
+            // 通道 A（FastBLE 主栈）：00003719 / 00001234
+            val serviceA = g.getService(UUID.fromString(BleConstants.UUID_SERVICE))
+            val chA = serviceA?.getCharacteristic(UUID.fromString(BleConstants.UUID_NOTIFY))
+            if (chA == null) {
+                BleDiagnostic.log("未找到服务/特征 A")
                 _events.tryEmit(Event.Error("未找到服务 ${BleConstants.UUID_SERVICE} / 特征 ${BleConstants.UUID_NOTIFY}"))
                 return
             }
-            BleDiagnostic.log("服务发现成功，准备开启通知")
-            notifyCharacteristic = ch
-            enableNotify(g, ch)
+            BleDiagnostic.log("服务发现成功，准备开启通知 (通道 A)")
+            notifyCharacteristic = chA
+            enableNotify(g, chA, "A")
+
+            // 通道 B（legacy 二进制遥测栈）：0000ff33 / 0000ff02
+            // 原厂 CMD A~F 遥测（车速/转速/油耗/水温/油量/电压/里程/故障码）走这条；
+            // 4.9.0 启动入口虽变死代码，但车机固件仍可能在此下发，必须也开通知，否则"读不到数据"。
+            val chB = g.getService(UUID.fromString(BleConstants.UUID_SERVICE_LEGACY))
+                ?.getCharacteristic(UUID.fromString(BleConstants.UUID_CHART_LEGACY))
+            if (chB != null) {
+                BleDiagnostic.log("发现 legacy 遥测通道 0000ff02，开启通知 (通道 B)")
+                enableNotify(g, chB, "B")
+            } else {
+                BleDiagnostic.log("未发现 legacy 遥测通道 0000ff02（部分车机仅用通道 A）")
+            }
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
@@ -172,7 +185,8 @@ class BleConnectionManager(private val context: Context) {
         @Deprecated("Deprecated in Java")
         override fun onCharacteristicChanged(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
             @Suppress("DEPRECATION") val value = ch.value ?: return
-            emitNotify(value)
+            val channel = if (ch.uuid == UUID.fromString(BleConstants.UUID_NOTIFY)) "A" else "B"
+            emitNotify(value, channel)
         }
 
         override fun onCharacteristicChanged(
@@ -180,7 +194,8 @@ class BleConnectionManager(private val context: Context) {
             ch: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            emitNotify(value)
+            val channel = if (ch.uuid == UUID.fromString(BleConstants.UUID_NOTIFY)) "A" else "B"
+            emitNotify(value, channel)
         }
 
         override fun onCharacteristicWrite(
@@ -195,11 +210,11 @@ class BleConnectionManager(private val context: Context) {
             drainWriteQueue()
         }
 
-        private fun emitNotify(value: ByteArray) {
+        private fun emitNotify(value: ByteArray, channel: String) {
             val hex = value.toHexString()
             val frame = BleProtocol.parseFrame(hex)
-            Log.d(TAG, "onNotify: $hex")
-            BleDiagnostic.onNotify(hex)
+            Log.d(TAG, "onNotify[$channel]: $hex")
+            BleDiagnostic.onNotify(hex, channel)
             _events.tryEmit(Event.NotifyData(hex, frame))
         }
     }
@@ -274,16 +289,17 @@ class BleConnectionManager(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    private fun enableNotify(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
-        notifyReadyEmitted = false
+    private fun enableNotify(g: BluetoothGatt, ch: BluetoothGattCharacteristic, channel: String) {
+        // 仅通道 A 需要触发"通知就绪 → 发 HELLO"；通道 B 是只读遥测，不重置该标志
+        if (channel == "A") notifyReadyEmitted = false
         g.setCharacteristicNotification(ch, true)
         val cccd = ch.getDescriptor(UUID.fromString(BleConstants.UUID_CCCD))
         if (cccd == null) {
-            _events.tryEmit(Event.Error("缺少 CCCD 描述符"))
+            if (channel == "A") _events.tryEmit(Event.Error("缺少 CCCD 描述符"))
             return
         }
         cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-        scheduleNotifyReadyFallback()
+        if (channel == "A") scheduleNotifyReadyFallback()
         g.writeDescriptor(cccd)
     }
 

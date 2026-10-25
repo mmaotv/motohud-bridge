@@ -22,7 +22,7 @@ android {
         applicationId = "com.motohud.ble"
         minSdk = 24
         targetSdk = 36
-versionCode = 11
+versionCode = 12
 versionName = "2.2.7"
 
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey

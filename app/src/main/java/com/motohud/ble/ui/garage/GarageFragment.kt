@@ -193,17 +193,24 @@ class GarageFragment : Fragment(R.layout.fragment_garage) {
         renderBike(BikePrefs.current.value)
     }
 
-    /** 优先显示用户自定义车照（CENTER_CROP 裁切填充），否则回退到内置车型图。 */
+    /**
+     * 优先显示用户自定义车照，否则回退到内置车型图。
+     * - 自定义车照：CENTER_CROP 铺满整个 Hero 框（padding 归零），任何比例都不留边缘空白。
+     * - 内置车型图：保留上下留白 + FIT_CENTER，配合光晕/底部渐隐构图居中显示。
+     */
     private fun loadBikeImage(bike: BikeModel) {
         val iv = binding.ivBike
+        val density = resources.displayMetrics.density
         viewLifecycleOwner.lifecycleScope.launch {
             val w = iv.width.takeIf { it > 0 } ?: iv.rootView.width
             val bmp = BikePhotoStore.load(requireContext(), bike.id, w)
             _binding ?: return@launch
             if (bmp != null) {
+                iv.setPadding(0, 0, 0, 0)
                 iv.scaleType = ImageView.ScaleType.CENTER_CROP
                 iv.setImageBitmap(bmp)
             } else {
+                iv.setPadding(0, (6 * density).toInt(), 0, (34 * density).toInt())
                 iv.scaleType = ImageView.ScaleType.FIT_CENTER
                 val asset = withContext(Dispatchers.IO) { decodeAsset(bike.assetPath, 2) }
                 _binding ?: return@launch

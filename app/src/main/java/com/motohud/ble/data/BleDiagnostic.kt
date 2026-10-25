@@ -109,11 +109,11 @@ object BleDiagnostic {
         }
     }
 
-    fun onNotify(hex: String) {
+    fun onNotify(hex: String, channel: String = "A") {
         _frameCount.value = _frameCount.value + 1
         _lastRaw.value = hex
         _lastSummary.value = summarize(hex)
-        log("收帧 #${_frameCount.value}: $hex")
+        log("收帧[$channel] #${_frameCount.value}: $hex")
     }
 
     fun onSend(text: String) {

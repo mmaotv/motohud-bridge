@@ -105,11 +105,11 @@ class NavigationFragment : Fragment(R.layout.fragment_navigation) {
         searchArea = view.findViewById(R.id.search_area)
         mapView = view.findViewById(R.id.map_view)
 
-        // 顶部搜索区按状态栏高度留白（原先写死 44dp，刘海屏/手势导航下会压到状态栏）
+        // 顶部搜索区贴近顶栏（本页已在主界面 banner 之下，状态栏高度由 banner 预留，
+        // 这里只留 8dp 间距把搜索框往上提，不再叠加状态栏高度导致黑边/下移）
         ViewCompat.setOnApplyWindowInsetsListener(searchArea) { v, insets ->
-            val top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
             v.updateLayoutParams<androidx.constraintlayout.widget.ConstraintLayout.LayoutParams> {
-                topMargin = top + (8 * resources.displayMetrics.density).toInt()
+                topMargin = (8 * resources.displayMetrics.density).toInt()
             }
             insets
         }

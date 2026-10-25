@@ -29,8 +29,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="@string/garage_bike_photo"
-                android:paddingTop="6dp"
-                android:paddingBottom="34dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_nav_garage" />
 

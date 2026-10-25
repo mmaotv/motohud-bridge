@@ -82,7 +82,7 @@ object BleConstants {
 
     // ---------- 上行文本指令（NormalMotorFragment.java:1795-1827 / BaseNaviActivity.java:255） ----------
     /** 握手：HELLO :A:<手机品牌>: */
-    fun cmdHello(brand: String) = "HELLO :A:$brand:"
+    fun cmdHello(brand: String) = "HELLO :A:${if (brand.isBlank()) "未知品牌" else brand}:"
 
     /** 通知/来电转发：MSG :<类型>:<计数>: */
     fun cmdMsg(type: String, count: Int) = "MSG :$type:$count:"
